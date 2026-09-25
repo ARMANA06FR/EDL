@@ -364,11 +364,12 @@ function recap(){
   return h.slice(0,bandEnd)+(sum?`<div class="sum">${sum}</div>`:'')+h.slice(bandEnd);
 }
 $('#exp').onclick=async()=>{
-  const h=recap(),name='EDL_'+(S.v.date||new Date().toISOString().slice(0,10))+'.html';
+  const h=recap(),name=(S.v.rdv?S.v.rdv+' ':'')+'EDL.html';
   const doc='<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>État des lieux — DIAG-LOC</title><style>body{font:14px/1.4 system-ui,sans-serif;margin:20px;color:#17252d;max-width:900px}table{border-collapse:separate;border-spacing:0 6px;width:100%;margin:6px 0 16px;font-size:13px}td,th{border:1px solid #e2e6e8;padding:7px 9px;text-align:left;vertical-align:top}tr td:first-child,tr th:first-child{border-radius:8px 0 0 8px}tr td:last-child,tr th:last-child{border-radius:0 8px 8px 0}th{background:#eef3f5;font-weight:600}h2{margin:20px 0 4px;font-size:17px}img{max-width:160px;margin:3px;border-radius:6px}.hdband{background:#0e6d8c;color:#fff;border-radius:12px;padding:18px 22px;margin-bottom:14px}.hdband .brand{font-weight:800;font-size:22px;letter-spacing:.06em;display:block}.hdband .sub{font-size:13px;opacity:.9}.sum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}.sc{font-size:12px;padding:5px 10px;border-radius:20px;color:#333;font-weight:500}@media print{body{margin:8mm}}</style><body>'+h;
   try{const d=window.claude&&await claude.use('downloads');
     if(d){await d.save({filename:name,data:doc});return}}catch(e){if(e&&e.code==='declined')return}
-  $('#recap').innerHTML=h;print();
+  const blob=new Blob([doc],{type:'text/html'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();
 };
 $('#pdf').onclick=async()=>{
   if(!window.jspdf){msg('PDF indisponible (bibliothèque non chargée)');return}
