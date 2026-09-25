@@ -73,6 +73,10 @@ canvas.sg{width:100%;height:150px;background:#fff;border:1px solid var(--line);b
 #qb{display:none;position:fixed;left:0;right:0;bottom:0;gap:6px;overflow-x:auto;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line);z-index:9}
 #qb button{flex:none;border:1px solid var(--line);background:none;color:var(--ink);border-radius:8px;padding:8px 12px;font:inherit;font-size:14px}
 #recap{display:none}
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;align-items:center;justify-content:center;padding:16px}
+#modal.show{display:flex}
+#modal .card{background:var(--card);color:var(--ink);border-radius:12px;padding:18px;max-width:380px;width:100%;max-height:80vh;overflow:auto}
+#modal .act button{text-align:left}
 #recap.show{display:block;position:fixed;inset:0;background:var(--bg);color:var(--ink);overflow:auto;z-index:30;padding:16px}
 #recap.show table{border-collapse:separate;border-spacing:0 6px;width:100%;margin:6px 0 14px;font-size:13px}
 #recap.show td,#recap.show th{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
@@ -96,6 +100,7 @@ canvas.sg{width:100%;height:150px;background:#fff;border:1px solid var(--line);b
     <label class="btn sm" title="Reprendre un EDL (JSON)">Importer<input type="file" accept="application/json" hidden id="imp"></label>
     <button class="btn sm" id="expj">JSON</button>
     <button class="btn sm" id="ape">Aperçu</button>
+    <button class="btn sm" id="shr">Partager</button>
     <button class="btn p sm" id="exp">Exporter</button>
   </div>
   <nav id="tabs"></nav>
@@ -103,6 +108,7 @@ canvas.sg{width:100%;height:150px;background:#fff;border:1px solid var(--line);b
 <main id="app"></main>
 <button class="btn p" id="rcls" style="display:none">Fermer l’aperçu</button>
 <div id="recap"></div>
+<div id="modal"><div class="card" id="modalBody"></div></div>
 <div id="qb"></div>
 <script>
 const $=s=>document.querySelector(s);
@@ -131,9 +137,9 @@ const TPL={
  ext:{l:'Jardin / extérieur',i:[['Pelouse'],['Allées'],['Haies',['≤ 2 m','> 2 m']],['Terrasses'],['Arbres / plantes'],['Façade'],['Auvent'],['Pergolas'],PRI,ECL,['Grillage'],['Murs de clôture'],['Portail d’entrée'],['Autre portail'],['Divers']]}
 };
 const GEN=[
-['Rendez-vous',[['client','Client (propriétaire)'],['rdv','N° RDV'],['date','Date','date'],['heure','Heure','time'],['cadr','Adresse du client'],['ccp','Code postal'],['cville','Ville']]],
+['Rendez-vous',[['client','Client (propriétaire)'],['cliente','E-mail client'],['clientte','Téléphone client'],['rdv','N° RDV'],['date','Date','date'],['heure','Heure','time'],['cadr','Adresse du client'],['ccp','Code postal'],['cville','Ville']]],
 ['Logement',[['typ','Type (T2, T3…)'],['etage','Étage'],['digi','Digicode'],['hp','H/plafond'],['adr','Adresse du logement'],['cp','Code postal'],['ville','Ville'],['meub','Logement',['Vide','Meublé']],['inv','Inventaire',['À établir','À contrôler','À ignorer']]]],
-['Locataires',[['ent','Locataire entrant'],['sor','Locataire sortant'],['nadr','Nouvelle adresse du sortant'],['ncp','Code postal'],['nville','Ville']]]];
+['Locataires',[['ent','Locataire entrant'],['entem','E-mail entrant'],['entte','Téléphone entrant'],['sor','Locataire sortant'],['sorem','E-mail sortant'],['sorte','Téléphone sortant'],['nadr','Nouvelle adresse du sortant'],['ncp','Code postal'],['nville','Ville']]]];
 const CPT=[
 ['Équipements',[['ecs','Eau chaude',['Cumulus','Chauffe-eau gaz','Collectif']],['ecsm','Marque / modèle'],['chf','Chauffage',['Indiv. élec.','Indiv. gaz','Collectif']],['daaf','DAAF',['Oui','Non']],['daafl','Emplacement DAAF'],['cert','Certificat d’entretien',['Oui','Non']],['coupe','Alimentation coupée (sous réserve)',['Aucune','Eau','Électricité','Eau + élec.']]]],
 ['Villa / maison',[['chd','Chaudière',['Fuel','Gaz']],['cuve','Niveau cuve (litres)'],['chc','Certificat d’entretien chaudière',['Oui','Non']],['chdate','Daté du','date']]]];
@@ -168,6 +174,14 @@ function fld([k,l,t]){
   return `<label class="f">${esc(l)}<input data-k="${k}" type="${t||'text'}" value="${esc(S.v[k]||'')}"></label>`;
 }
 const groups=G=>G.map(([t,f])=>`<h3>${esc(t)}</h3><div class="g">${f.map(fld).join('')}</div>`).join('');
+function contactsBlock(){
+  const P=[['Client',S.v.client,S.v.cliente,S.v.clientte],['Locataire entrant',S.v.ent,S.v.entem,S.v.entte],['Locataire sortant',S.v.sor,S.v.sorem,S.v.sorte]];
+  const rows=P.filter(([l,n,e,t])=>n||e||t).map(([l,n,e,t],i)=>{
+    const nk=i===0?'cliente':i===1?'entem':'sorem',tk=i===0?'clientte':i===1?'entte':'sorte';
+    return `<div class="it"><b>${esc(l)}${n?' — '+esc(n):''}</b><div class="row">${e?`<button class="btn sm" data-act="copy" data-src="${nk}">Copier l’e-mail</button>`:''}${t?`<button class="btn sm" data-act="copy" data-src="${tk}">Copier le tél.</button>`:''}</div></div>`;
+  }).join('');
+  return rows?`<h3 class="strong">Contacts</h3>${rows}`:'';
+}
 const nm=(k,d)=>k==='sgX'?(S.v.sgXn||'ARMANA Frédéric'):(S.v[k+'n']??S.v[d]??'');
 const ob=k=>`<textarea class="ob" rows="1" data-k="${k}b" placeholder="Observations">${esc(S.v[k+'b']||'')}</textarea>`;
 const grow=t=>{t.style.height='auto';t.style.height=t.scrollHeight+'px'};
@@ -236,8 +250,9 @@ function render(){
     const sO=S.v.sensS&&!S.v.sensE,eO=S.v.sensE&&!S.v.sensS;
     const genRL=GEN.filter(g=>g[0]!=='Locataires');
     h=`<h2>Constat d’état des lieux</h2><div class="seg"><span>Type d’état des lieux</span><button class="c${S.v.sensE?' on':''}" data-k="sensE" data-t="1">Entrant</button><button class="c${S.v.sensS?' on':''}" data-k="sensS" data-t="1">Sortant</button></div>${groups(genRL)}`;
-    if(!sO)h+=`<h3 class="strong">Locataire entrant</h3><div class="g">${fld(['ent','Nom'])}</div>`;
-    if(!eO)h+=`<h3 class="strong">Locataire sortant</h3><div class="g">${[['sor','Nom'],['nadr','Nouvelle adresse'],['ncp','Code postal'],['nville','Ville']].map(fld).join('')}</div>`;
+    if(!sO)h+=`<h3 class="strong">Locataire entrant</h3><div class="g">${[['ent','Nom'],['entem','E-mail'],['entte','Téléphone']].map(fld).join('')}</div>`;
+    if(!eO)h+=`<h3 class="strong">Locataire sortant</h3><div class="g">${[['sor','Nom'],['sorem','E-mail'],['sorte','Téléphone'],['nadr','Nouvelle adresse'],['ncp','Code postal'],['nville','Ville']].map(fld).join('')}</div>`;
+    h+=contactsBlock();
   }
   else if(T==='cpt')h=`<h2>Relevés et équipements</h2>${meters()}${groups(CPT)}${photoBlock('cpt')}`;
   else if(T==='ann')h=`<h2>Annexes</h2>${dynList(S.an,'an',(k,o)=>`<div class="g">${['Cave','Garage','Grenier'].includes(o.n)?`<label class="f">N°<input data-k="${k}num" value="${esc(S.v[k+'num']||'')}"></label>`:''}<label class="f">Porte${sel(k+'p',SS)}</label><label class="f">Serrure${sel(k+'s',SS)}</label><label class="f">Vide ou m³ à vider<input data-k="${k}m" value="${esc(S.v[k+'m']||'')}"></label></div>${ob(k)}`)}`;
@@ -296,6 +311,12 @@ document.addEventListener('click',e=>{
   if(d.act==='dupkl'){const i=S.kl.findIndex(o=>o.id===d.r);S.kl.splice(i+1,0,{id:'k'+Date.now(),n:S.kl[i].n});render();save()}
   if(d.act==='rmph'){S.ph[d.r].splice(+d.i,1);const el=document.getElementById('phs-'+d.r)||$('#phs');if(el)el.innerHTML=phView(d.r);savePh()}
   if(d.act==='clr'){delete S.v[d.k];save();sigInit()}
+  if(d.act==='copy'){const val=S.v[d.src]||'';if(!val)return;
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(val).then(()=>msg('Copié')).catch(()=>msg('Copie impossible'));
+    else msg('Copie non disponible sur ce navigateur')}
+  if(d.act==='impCancel'){pendingImport=null;hideModal()}
+  if(d.act==='impAsis'){applyImport(pendingImport,false);pendingImport=null;hideModal()}
+  if(d.act==='impSortie'){applyImport(pendingImport,true);pendingImport=null;hideModal()}
 });
 function onIn(e){
   const t=e.target;
@@ -361,9 +382,13 @@ function recap(){
   const bandEnd=h.indexOf('</div>')+6;
   return h.slice(0,bandEnd)+(sum?`<div class="sum">${sum}</div>`:'')+h.slice(bandEnd);
 }
+function buildDoc(){
+  const h=recap();
+  return '<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>État des lieux — DIAG-LOC</title><style>body{font:14px/1.4 system-ui,sans-serif;margin:20px;color:#17252d;max-width:900px}table{border-collapse:separate;border-spacing:0 6px;width:100%;margin:6px 0 16px;font-size:13px}td,th{border:1px solid #e2e6e8;padding:7px 9px;text-align:left;vertical-align:top}tr td:first-child,tr th:first-child{border-radius:8px 0 0 8px}tr td:last-child,tr th:last-child{border-radius:0 8px 8px 0}th{background:#eef3f5;font-weight:600}h2{margin:20px 0 4px;font-size:17px}img{max-width:160px;margin:3px;border-radius:6px}.hdband{background:#0e6d8c;color:#fff;border-radius:12px;padding:18px 22px;margin-bottom:14px}.hdband .brand{font-weight:800;font-size:22px;letter-spacing:.06em;display:block}.hdband .sub{font-size:13px;opacity:.9}.sum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}.sc{font-size:12px;padding:5px 10px;border-radius:20px;color:#333;font-weight:500}@media print{body{margin:8mm}}</style><body>'+h;
+}
+const docName=()=>(S.v.rdv?S.v.rdv+' ':'')+'EDL.html';
 $('#exp').onclick=async()=>{
-  const h=recap(),name=(S.v.rdv?S.v.rdv+' ':'')+'EDL.html';
-  const doc='<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>État des lieux — DIAG-LOC</title><style>body{font:14px/1.4 system-ui,sans-serif;margin:20px;color:#17252d;max-width:900px}table{border-collapse:separate;border-spacing:0 6px;width:100%;margin:6px 0 16px;font-size:13px}td,th{border:1px solid #e2e6e8;padding:7px 9px;text-align:left;vertical-align:top}tr td:first-child,tr th:first-child{border-radius:8px 0 0 8px}tr td:last-child,tr th:last-child{border-radius:0 8px 8px 0}th{background:#eef3f5;font-weight:600}h2{margin:20px 0 4px;font-size:17px}img{max-width:160px;margin:3px;border-radius:6px}.hdband{background:#0e6d8c;color:#fff;border-radius:12px;padding:18px 22px;margin-bottom:14px}.hdband .brand{font-weight:800;font-size:22px;letter-spacing:.06em;display:block}.hdband .sub{font-size:13px;opacity:.9}.sum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}.sc{font-size:12px;padding:5px 10px;border-radius:20px;color:#333;font-weight:500}@media print{body{margin:8mm}}</style><body>'+h;
+  const doc=buildDoc(),name=docName();
   try{const d=window.claude&&await claude.use('downloads');
     if(d){await d.save({filename:name,data:doc});return}}catch(e){if(e&&e.code==='declined')return}
   const blob=new Blob([doc],{type:'text/html'});
@@ -376,6 +401,16 @@ $('#neu').onclick=()=>{
   render();save();savePh();$('#neu').dataset.ok='';$('#neu').textContent='Nouveau';
 };
 $('#ape').onclick=()=>{$('#recap').innerHTML=recap();$('#recap').classList.add('show');$('#rcls').style.display='block';scrollTo(0,0)};
+$('#shr').onclick=async()=>{
+  const doc=buildDoc(),name=docName();
+  const file=new File([doc],name,{type:'text/html'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:'État des lieux — DIAG-LOC',text:'Constat d’état des lieux'});return}
+    catch(e){if(e&&e.name==='AbortError')return;msg('Partage annulé')}
+  }else{
+    msg('Partage natif non disponible — utilise Exporter puis joins le fichier toi-même');
+  }
+};
 $('#rcls').onclick=()=>{$('#recap').classList.remove('show');$('#recap').innerHTML='';$('#rcls').style.display='none'};
 $('#expj').onclick=async()=>{
   const name='EDL_'+(S.v.date||new Date().toISOString().slice(0,10))+'.json';
@@ -383,14 +418,34 @@ $('#expj').onclick=async()=>{
   try{const d=window.claude&&await claude.use('downloads');if(d){await d.save({filename:name,data});return}}catch(e){}
   const a=document.createElement('a');a.href='data:application/json,'+encodeURIComponent(data);a.download=name;a.click();
 };
+let pendingImport=null;
+function showModal(html){$('#modalBody').innerHTML=html;$('#modal').classList.add('show')}
+function hideModal(){$('#modal').classList.remove('show');$('#modalBody').innerHTML=''}
+function applyImport(j,toSortie){
+  S.v=j.v||{};S.rooms=j.rooms||S.rooms;S.cp=j.cp||S.cp;S.x=j.x||{};S.iv=j.iv||[];
+  S.an=j.an||S.an;S.kl=j.kl||S.kl;S.ph=j.ph||{};
+  if(toSortie){
+    S.v.sensS=true;delete S.v.sensE;
+    if(S.v.ent)S.v.sor=S.v.ent;if(S.v.entem)S.v.sorem=S.v.entem;if(S.v.entte)S.v.sorte=S.v.entte;
+    delete S.v.ent;delete S.v.entem;delete S.v.entte;
+    S.ph={};
+    SIG.forEach(([k])=>{delete S.v[k]});
+    S.rooms.forEach(r=>{delete S.v[r.id+'.done']});
+    delete S.v.rdv;delete S.v.date;delete S.v.heure;
+  }
+  S.tab='gen';render();save();savePh();
+  msg(toSortie?'Repris pour la sortie — relis chaque pièce':'EDL rouvert');
+}
 $('#imp').onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
-  try{const j=JSON.parse(await f.text());
-    S.v=j.v||{};S.rooms=j.rooms||S.rooms;S.cp=j.cp||S.cp;S.x=j.x||{};S.iv=j.iv||[];
-    S.an=j.an||S.an;S.kl=j.kl||S.kl;S.ph=j.ph||{};
-    S.v.sensS=true;S.tab='gen';render();save();savePh();
-    msg('EDL importé — passé en sortant, relis chaque pièce');
-  }catch(x){msg('Fichier illisible')}
+  try{pendingImport=JSON.parse(await f.text())}catch(x){msg('Fichier illisible');e.target.value='';return}
+  showModal(`<h3 class="strong">Que veux-tu faire de ce fichier ?</h3>
+    <p class="lg">Choisis selon l’usage de cet EDL.</p>
+    <div class="act" style="flex-direction:column;align-items:stretch">
+      <button class="btn p sm" data-act="impSortie">Préparer la sortie<br><span style="font-weight:400;font-size:12px">Locataire entrant → sortant, photos et signatures effacées, N° RDV/date/heure vidés</span></button>
+      <button class="btn sm" data-act="impAsis">Modifier cet EDL tel quel<br><span style="font-weight:400;font-size:12px">Rien n’est modifié, y compris photos et signatures</span></button>
+      <button class="btn d sm" data-act="impCancel">Annuler</button>
+    </div>`);
   e.target.value='';
 };
 $('#qb').innerHTML=QB.map(x=>`<button>${esc(x)}</button>`).join('');
