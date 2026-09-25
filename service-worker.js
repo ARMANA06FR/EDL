@@ -1,7 +1,7 @@
 // Service worker EDL — DIAG-LOC
 // Met l'application en cache pour un fonctionnement hors connexion.
 // Incrémenter CACHE à chaque nouvelle mise en ligne pour forcer la mise à jour.
-const CACHE = 'edl-cache-v2';
+const CACHE = 'edl-cache-v3';
 const PRECACHE = [
   './',
   './index.html',
