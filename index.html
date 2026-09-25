@@ -13,7 +13,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="EDL">
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{--bg:#f4f6f6;--card:#fff;--ink:#17252d;--mut:#5d6d76;--line:#d5dde0;--acc:#0e6d8c;--accf:#fff;--nv:#7d8b94;--nf:#2a78c9;--be:#2e8b57;--eu:#a87b0c;--me:#c85d18;--hs:#c62f3b;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -97,7 +96,6 @@ canvas.sg{width:100%;height:150px;background:#fff;border:1px solid var(--line);b
     <label class="btn sm" title="Reprendre un EDL (JSON)">Importer<input type="file" accept="application/json" hidden id="imp"></label>
     <button class="btn sm" id="expj">JSON</button>
     <button class="btn sm" id="ape">Aperçu</button>
-    <button class="btn sm" id="pdf">PDF</button>
     <button class="btn p sm" id="exp">Exporter</button>
   </div>
   <nav id="tabs"></nav>
@@ -157,7 +155,7 @@ function loadLS(){try{const a=localStorage.getItem('edl1');if(a)Object.assign(S,
 loadLS();
 let tm;
 function msg(t){$('#st').textContent=t;clearTimeout(tm);tm=setTimeout(()=>$('#st').textContent='',2500)}
-function save(){try{localStorage.setItem('edl1',JSON.stringify({v:S.v,rooms:S.rooms,tab:S.tab,cp:S.cp,x:S.x,iv:S.iv,an:S.an,kl:S.kl}));msg('Enregistré')}catch(e){msg('Sauvegarde impossible')}}
+function save(){try{localStorage.setItem('edl1',JSON.stringify({v:S.v,rooms:S.rooms,tab:S.tab,cp:S.cp,x:S.x,iv:S.iv,an:S.an,kl:S.kl}))}catch(e){msg('Sauvegarde impossible')}}
 function savePh(){try{localStorage.setItem('edl1p',JSON.stringify(S.ph))}catch(e){msg('Mémoire pleine : exporte avant de continuer')}}
 const isSortant=()=>!!S.v.sensS;
 
@@ -370,28 +368,6 @@ $('#exp').onclick=async()=>{
     if(d){await d.save({filename:name,data:doc});return}}catch(e){if(e&&e.code==='declined')return}
   const blob=new Blob([doc],{type:'text/html'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();
-};
-$('#pdf').onclick=async()=>{
-  if(!window.jspdf){msg('PDF indisponible (bibliothèque non chargée)');return}
-  msg('Génération du PDF…');
-  const {jsPDF}=window.jspdf,doc=new jsPDF({unit:'pt'});
-  const stripHtml=html=>html.replace(/<\/tr>/g,'\n').replace(/<\/h[123]>/g,'\n').replace(/<\/p>/g,'\n').replace(/<td>/g,' | ').replace(/<th>/g,' | ').replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").split('\n').map(l=>l.trim()).filter(Boolean).join('\n');
-  const margin=40,W=doc.internal.pageSize.getWidth()-margin*2,Hp=doc.internal.pageSize.getHeight()-margin;
-  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor('#0e6d8c');doc.text('DIAG-LOC',margin,margin);
-  doc.setFontSize(11);doc.setTextColor('#333');doc.text('Constat d’état des lieux',margin,margin+16);
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor('#000');
-  let y=margin+38;
-  stripHtml(recap()).split('\n').forEach(raw=>{
-    const lines=doc.splitTextToSize(raw,W);
-    lines.forEach(line=>{if(y>Hp){doc.addPage();y=margin}doc.text(line,margin,y);y+=12});
-  });
-  (S.rooms.map(r=>S.ph[r.id]||[]).flat().concat(S.iv.map(r=>S.ph['iv'+r.id]||[]).flat(),S.ph.inv||[])).forEach(src=>{
-    if(y>Hp-120){doc.addPage();y=margin}
-    try{doc.addImage(src,'JPEG',margin,y,160,120);y+=130}catch(e){}
-  });
-  const name=(S.v.rdv?S.v.rdv+' ':'')+'EDL.pdf',blob=doc.output('blob');
-  try{const d=window.claude&&await claude.use('downloads');if(d){await d.save({filename:name,data:blob});msg('PDF généré');return}}catch(e){}
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();msg('PDF généré');
 };
 $('#neu').onclick=()=>{
   if($('#neu').dataset.ok!=='1'){$('#neu').dataset.ok='1';$('#neu').textContent='Confirmer (efface tout)';
