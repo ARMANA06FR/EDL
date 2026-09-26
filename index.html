@@ -42,6 +42,9 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 .it.warn{background:#fdf0dd;border-color:var(--eu);border-width:2px}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .it.warn{background:#3a2f1a}}
 :root[data-theme="dark"] .it.warn{background:#3a2f1a}
+.it.filled{background:#eaf6ee}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .it.filled{background:#16281c}}
+:root[data-theme="dark"] .it.filled{background:#16281c}
 .mini.d{border-color:var(--hs);color:var(--hs)}
 .tb .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--be);margin-left:5px;vertical-align:middle}
 .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
@@ -68,6 +71,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 .ph button{position:absolute;top:2px;right:2px;border:0;background:#000a;color:#fff;border-radius:50%;width:24px;height:24px}
 .kg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
 canvas.sg{width:100%;height:150px;background:#fff;border:1px solid var(--line);border-radius:8px;touch-action:none}
+canvas.sg.locked{border-color:var(--be);border-width:2px}
 .act{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;align-items:center}
 .cn{grid-template-columns:repeat(auto-fit,minmax(72px,1fr));margin:6px 0}
 #qb{display:none;position:fixed;left:0;right:0;bottom:0;gap:6px;overflow-x:auto;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line);z-index:9}
@@ -114,25 +118,26 @@ canvas.sg{width:100%;height:150px;background:#fff;border:1px solid var(--line);b
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const ST=[['NV','Non vérifié','--nv'],['NF','Neuf','--nf'],['BE','Bon état','--be'],['EU','État d’usage','--eu'],['ME','Mauvais état','--me'],['HS','Hors service','--hs']];
-const SOL=['Carrelage','Marbre','Parquet','Parquet flottant'],PLI=['Carrelage','Marbre','Bois peint','Bois verni'],MUR=['Crépi','Peint','Papier peint','Toile de verre'],VMC=['VMC','Autogyre','VH','VB','VH + VB'];
+const SOL=['Carrelage','Marbre','Parquet','Parquet flottant','Pierre naturelle','Lino/PVC','Béton'],PLI=['Carrelage','Marbre','Bois peint','Bois verni','PVC','Goulottes'],MUR=['Crépi','Peint','Papier peint','Toile de verre'],VMC=['VMC','Autogyre','VH','VB','VH + VB'];
 const DMAT=['Bois peint','Bois verni','Verre','Alu','Métal','Autre'],CRED=['Faïence','Stratifié','Verre','Inox','Autre'],REV=['Émail','Céramique','Pierre naturelle','Composite','Verre','Béton','Autre'];
 const PRI=['Prises',null,['PC','Tel','TV']],ECL=['Éclairage',null,['Plafonnier','Applique','Amp. EU','Amp. HS/abs','Néon','Fils nus']];
 const NOTRCH=new Set(['Interphone / visiophone','Serrure','Judas','Chauffage','Sonnette','Prises','Éclairage','Ventilation','Robinets','Siphon','Mélangeur','Joint silicone','Évier','Miroir','Pare-douche','Porte-douchette','Porte-serviette','Lave-main']);
 const CHAUF=['Radiateur','Convecteur','Climatisation','Télécommande'];
 const SERR=['Serrure / verrou',['Serrure','Verrou','Loquet'],null,null,null,{when:'Serrure',label:'Nombre de clés'}];
+const VOLM=['Bois peint','Bois verni','Alu','PVC'];
 const BASE=[['Porte d’accès',DMAT],SERR,['Sol',SOL],['Plinthes',PLI],['Murs',MUR],['Plafond',MUR],
-  ['Chauffage',CHAUF,['Nb'],null,1],['Ouvertures',['Simple vitrage','Double vitrage'],['Fen.','P.fen.'],null,1],
-  ['Volets',['Roulant','Battant','Pliant'],['Nb'],null,1],['Placards',null,['Portes','Rayons'],null,1],PRI,ECL];
+  ['Chauffage',CHAUF,['Nb'],null,1],['Ouvertures',['Simple vitrage','Double vitrage','Baie coulissante'],['Fen.','P.fen.'],null,1],
+  ['Volets',['Roulant','Battant','Pliant','Coulissant'],['Nb'],null,1,null,VOLM],['Placards',null,['Portes','Rayons','Tiroirs'],null,1],PRI,ECL];
 const SDB_BASE=BASE.map(x=>x[0]==='Chauffage'?['Chauffage',[...CHAUF,'Sèche-serviette'],['Nb'],null,1]:x);
 const WCF=['Réservoir','Cuvette','Abattant','Robinet de chasse'];
 const TPL={
  base:{l:'Pièce (séjour, chambre…)',i:BASE},
- entree:{l:'Entrée',i:[['Porte palière',DMAT],['Serrure'],['Sonnette'],['Judas'],['Interphone / visiophone',['Interphone','Visiophone']],...BASE]},
- cuisine:{l:'Cuisine',i:[...BASE,['Évier',['Grès','Inox','Résine']],['Joint silicone'],['Mélangeur'],['Siphon'],['Placard sous évier',null,['Portes','Rayons'],null,1],['Plan de travail'],['Robinets',null,null,['Gaz','MàL']],['Crédence',CRED],['Ventilation',VMC,null,null,1]]},
+ entree:{l:'Entrée',i:[['Porte palière',DMAT],['Serrure'],['Verrou',['Verrou haut','Verrou bas'],null,null,1],['Sonnette'],['Judas'],['Interphone / visiophone',['Interphone','Visiophone']],...BASE.filter(x=>x[0]!=='Porte d’accès'&&x!==SERR)]},
+ cuisine:{l:'Cuisine',i:[...BASE,['Évier',['Grès','Inox','Résine','Pierre naturelle','Verre']],['Joint silicone'],['Mélangeur'],['Siphon'],['Placard sous évier',null,['Portes','Rayons','Tiroirs'],null,1],['Plan de travail'],['Robinets',null,null,['Gaz','MàL']],['Crédence',CRED],['Ventilation',VMC,null,null,1]]},
  sdb:{l:'Salle de bain',i:[...SDB_BASE,['Placard sous lavabo',null,['Portes','Rayons','Tiroirs'],null,1],['Miroir',null,['Nombre'],null,1],['Pare-douche'],['Porte-douchette'],['Porte-serviette'],['Faïence'],['Ventilation',VMC,null,null,1]]},
- wc:{l:'WC',i:[['Porte d’accès',DMAT],SERR,['Sol',SOL],['Murs',MUR],['Plafond',MUR],ECL,['Ventilation',VMC,null,null,1],['Placard',null,['Portes','Rayons'],null,1],['Porte papier']]},
- balcon:{l:'Balcon',i:[['Sol',SOL],['Plinthe',PLI],['Façade',MUR],['Plafond',MUR],['Placard',null,['Portes','Rayons'],null,1],PRI,ECL,['Garde-corps'],['Prélat'],['Store banne']]},
- garage:{l:'Garage',i:[['Porte d’accès',DMAT],SERR,['Porte de garage'],['Sol',SOL],['Murs',MUR],['Plafond',MUR],['Ouvertures',null,null,null,1],['Placards',null,['Portes','Rayons'],null,1],PRI,ECL]},
+ wc:{l:'WC',i:[['Porte d’accès',DMAT],SERR,['Sol',SOL],['Murs',MUR],['Plafond',MUR],ECL,['Ventilation',VMC,null,null,1],['Placard',null,['Portes','Rayons','Tiroirs'],null,1],['Porte papier']]},
+ balcon:{l:'Balcon',i:[['Sol',SOL],['Plinthe',PLI],['Façade',MUR],['Plafond',MUR],['Placard',null,['Portes','Rayons','Tiroirs'],null,1],PRI,ECL,['Garde-corps'],['Prélat'],['Store banne']]},
+ garage:{l:'Garage',i:[['Porte d’accès',DMAT],SERR,['Porte de garage'],['Sol',SOL],['Murs',MUR],['Plafond',MUR],['Ouvertures',null,null,null,1],['Placards',null,['Portes','Rayons','Tiroirs'],null,1],PRI,ECL]},
  cave:{l:'Cave',i:[['Porte d’accès',DMAT],SERR,['Sol',SOL],['Murs',MUR],['Plafond',MUR],['Ouvertures',null,null,null,1],PRI,ECL]},
  ext:{l:'Jardin / extérieur',i:[['Pelouse'],['Allées'],['Haies',['≤ 2 m','> 2 m']],['Terrasses'],['Arbres / plantes'],['Façade'],['Auvent'],['Pergolas'],PRI,ECL,['Grillage'],['Murs de clôture'],['Portail d’entrée'],['Autre portail'],['Divers']]}
 };
@@ -154,14 +159,14 @@ const DD=['Table','Chaise','Table basse','Meuble TV','Télévision','Canapé','C
 const uid=()=>'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
 function fresh(){return {v:{sgXn:'ARMANA Frédéric'},rooms:[{id:'r1',n:'Entrée',t:'entree'},{id:'r2',n:'Cuisine',t:'cuisine'},{id:'r3',n:'Séjour',t:'base'},{id:'r4',n:'Chambre 1',t:'base'},{id:'r5',n:'Chambre 2',t:'base'},{id:'r6',n:'Salle de bain',t:'sdb'},{id:'r7',n:'WC',t:'wc'}],
- ph:{},tab:'gen',cp:[{id:'c1',t:'Eau',orig:1},{id:'c2',t:'Électricité',orig:1},{id:'c3',t:'Gaz',orig:1}],x:{},iv:[],
+ ph:{},tab:'gen',cp:[{id:'c1',t:'Eau',orig:1},{id:'c2',t:'Électricité',orig:1},{id:'c3',t:'Gaz',orig:1}],x:{},iv:[],san:{},
  an:ANN0.map((n,i)=>({id:'a'+i,n,orig:1})),kl:KEYS0.map((n,i)=>({id:'k'+i,n,orig:1}))}}
 let S=fresh();
 function loadLS(){try{const a=localStorage.getItem('edl1');if(a)Object.assign(S,JSON.parse(a));const p=localStorage.getItem('edl1p');if(p)S.ph=JSON.parse(p)}catch(e){}}
 loadLS();
 let tm;
 function msg(t){$('#st').textContent=t;clearTimeout(tm);tm=setTimeout(()=>$('#st').textContent='',2500)}
-function save(){try{localStorage.setItem('edl1',JSON.stringify({v:S.v,rooms:S.rooms,tab:S.tab,cp:S.cp,x:S.x,iv:S.iv,an:S.an,kl:S.kl}))}catch(e){msg('Sauvegarde impossible')}}
+function save(){try{localStorage.setItem('edl1',JSON.stringify({v:S.v,rooms:S.rooms,tab:S.tab,cp:S.cp,x:S.x,iv:S.iv,an:S.an,kl:S.kl,san:S.san}))}catch(e){msg('Sauvegarde impossible')}}
 function savePh(){try{localStorage.setItem('edl1p',JSON.stringify(S.ph))}catch(e){msg('Mémoire pleine : exporte avant de continuer')}}
 const isSortant=()=>!!S.v.sensS;
 
@@ -187,13 +192,14 @@ const ob=k=>`<textarea class="ob" rows="1" data-k="${k}b" placeholder="Observati
 const grow=t=>{t.style.height='auto';t.style.height=t.scrollHeight+'px'};
 const NOETAT=new Set(['Éclairage']),DEFNV=new Set(['Prises','Robinets']);
 function item(p,key,def,flags=true,dupBase){
-  const [name,opts,cn,chk,dup,cond]=def,k=p+'.'+key,sortant=isSortant(),notrch=NOTRCH.has(dupBase||name),removable=key.charAt(0)==='e',noetat=NOETAT.has(dupBase||name);
+  const [name,opts,cn,chk,dup,cond,opts2]=def,k=p+'.'+key,sortant=isSortant(),notrch=NOTRCH.has(dupBase||name),removable=key.charAt(0)==='e',noetat=NOETAT.has(dupBase||name);
   if(DEFNV.has(dupBase||name)&&S.v[k+'s']===undefined)S.v[k+'s']='NV';
   const fl=(s,l,ti)=>`<button class="c${S.v[k+s]?' on':''}" data-k="${k+s}" data-t="1"${ti?` title="${ti}"`:''}>${l}</button>`;
   const partial=S.v[k+'o']||S.v[k+'b']||(cn&&cn.some((c,j)=>S.v[k+'c'+j]))||(chk&&chk.some((c,j)=>S.v[k+'x'+j]));
   const warn=partial&&!S.v[k+'s'];
-  return `<div class="it${warn?' warn':''}"><div class="hd"><b>${esc(name)}</b>
-  ${opts?sel(k+'o',opts):''}${dup?`<button class="mini" data-act="dup" data-r="${p}" data-b="${esc(dupBase??name)}" data-i="${esc(key)}" title="Ajouter une ligne ${esc(name)} juste en dessous">+</button>`:''}${removable?`<button class="mini d" data-act="delx" data-r="${p}" data-id="${esc(key)}" title="Retirer cette ligne">×</button>`:''}</div>
+  const filled=!!S.v[k+'s'];
+  return `<div class="it${warn?' warn':filled?' filled':''}"><div class="hd"><b>${esc(name)}</b>
+  ${opts?sel(k+'o',opts):''}${opts2?sel(k+'o2',opts2):''}${dup?`<button class="mini" data-act="dup" data-r="${p}" data-b="${esc(dupBase??name)}" data-i="${esc(key)}" title="Ajouter une ligne ${esc(name)} juste en dessous">+</button>`:''}${removable?`<button class="mini d" data-act="delx" data-r="${p}" data-id="${esc(key)}" title="Retirer cette ligne">×</button>`:''}</div>
   ${cn?`<div class="g cn">${cn.map((c,j)=>`<label class="f">${c}<input type="number" min="0" inputmode="numeric" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></label>`).join('')}</div>`:''}
   ${chk?`<div class="row">${chk.map((c,j)=>`<button class="c${S.v[k+'x'+j]?' on':''}" data-k="${k}x${j}" data-t="1">${esc(c)}</button>`).join('')}</div>`:''}
   ${cond&&S.v[k+'o']===cond.when?`<div class="g cn"><label class="f">${cond.label}<input type="number" min="0" inputmode="numeric" data-k="${k}cc" value="${esc(S.v[k+'cc']||'')}"></label></div>`:''}
@@ -211,9 +217,15 @@ function roomItems(r){
   return h;
 }
 const SC_LAV=SC.filter(c=>!['Flexible','Douchette','Inverseur'].includes(c));
-const sanItem=(k,n,cols)=>{cols=cols||SC;return `<div class="it"><b>${n}</b><div class="g"><label class="f">Revêtement${sel(k+'r',REV)}</label><label class="f">État${sel(k+'s',SS)}</label>${cols.map((c,j)=>`<label class="f">${c}${sel(k+j,SS)}</label>`).join('')}</div>${ob(k)}</div>`};
-const san=id=>`<h3>Sanitaires</h3>`+SN.map((n,i)=>sanItem('sn'+id+'.'+i+'.',n)).join('');
-const wcCard=id=>{const k='wcg'+id+'.';return `<div class="it"><b>WC</b><div class="g">${WCF.map((c,j)=>`<label class="f">${c}${sel(k+j,SS)}</label>`).join('')}</div>${ob(k)}</div>`};
+const sanItem=(k,n,cols,extra)=>{cols=cols||SC;return `<div class="it${S.v[k+'s']?' filled':''}"><div class="hd"><b>${n}</b>${extra||''}</div><div class="g"><label class="f">Revêtement${sel(k+'r',REV)}</label><label class="f">État${sel(k+'s',SS)}</label>${cols.map((c,j)=>`<label class="f">${c}${sel(k+j,SS)}</label>`).join('')}</div>${ob(k)}</div>`};
+const san=id=>{
+  let h='<h3>Sanitaires</h3>';
+  SN.forEach((n,i)=>{const extra=n==='Lavabo'?`<button class="mini" data-act="dupsan" data-r="${id}" title="Dupliquer le lavabo">+</button>`:'';
+    h+=sanItem('sn'+id+'.'+i+'.',n,null,extra)});
+  (S.san[id]||[]).forEach(eid=>{h+=sanItem('sn'+id+'.x'+eid+'.','Lavabo',null,`<button class="mini d" data-act="delsan" data-r="${id}" data-id="${eid}" title="Retirer">×</button>`)});
+  return h;
+};
+const wcCard=id=>{const k='wcg'+id+'.',filled=WCF.some((c,j)=>S.v[k+j]);return `<div class="it${filled?' filled':''}"><b>WC</b><div class="g">${WCF.map((c,j)=>`<label class="f">${c}${sel(k+j,SS)}</label>`).join('')}</div>${ob(k)}</div>`};
 const meters=()=>`<h3>Compteurs</h3>`+S.cp.map(c=>{const k='cp'+c.id,l=MT[c.t],f=(s,t)=>`<label class="f">${t}<input data-k="${k+s}" value="${esc(S.v[k+s]||'')}"></label>`;
   return `<div class="it"><div class="hd"><b>${c.t}</b><button class="mini" data-act="dupcp" data-r="${c.id}" title="Dupliquer juste en dessous">+</button>${c.orig?'':`<button class="btn d sm" data-act="delcp" data-r="${c.id}">Retirer</button>`}</div><div class="g">${f('n','N° compteur')}${f('e','Emplacement')}${f('a',l[0])}${l[1]?f('b',l[1]):''}</div></div>`}).join('')+`<div class="act"><select id="nc" style="width:auto">${Object.keys(MT).map(t=>`<option>${t}</option>`).join('')}</select><button class="btn sm" data-act="addcp">Ajouter un compteur</button></div>`;
 const ivPh=id=>`<div class="ph" id="phs-${id}">${phView(id)}</div><div class="act"><label class="btn sm">Photo<input type="file" accept="image/*" capture="environment" hidden data-ph="${id}"></label><label class="btn sm">Galerie<input type="file" accept="image/*" multiple hidden data-ph="${id}"></label></div>`;
@@ -261,7 +273,9 @@ function render(){
   else if(T==='inv')h=`<h2>Inventaire du mobilier</h2><div class="g">${fld(['ive','Entrée',['Établissement','Contrôle']])}${fld(['ivs','Sortie',['Établissement','Contrôle']])}</div><datalist id="dp">${S.rooms.map(r=>`<option value="${esc(r.n)}">`).join('')}</datalist><datalist id="dd">${DD.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>${S.iv.map(ivRow).join('')}<div class="act"><button class="btn p sm" data-act="addiv">Ajouter un objet</button></div>${photoBlock('inv','Photos mobilier')}`;
   else if(T==='sig'){
     const sO=S.v.sensS&&!S.v.sensE,eO=S.v.sensE&&!S.v.sensS;
-    const blk=([k,l,d])=>`<h3>${l}</h3><label class="f">Nom<input data-k="${k}n" value="${esc(nm(k,d))}"></label><canvas class="sg" data-k="${k}"></canvas><div class="act"><button class="btn sm" data-act="clr" data-k="${k}">Effacer</button></div>`;
+    const blk=([k,l,d])=>{const locked=!!S.v[k+'lock'];
+      return `<h3>${l}</h3><label class="f">Nom<input data-k="${k}n" value="${esc(nm(k,d))}"></label><canvas class="sg${locked?' locked':''}" data-k="${k}"${locked?' style="pointer-events:none"':''}></canvas><div class="act">${locked?`<span class="lg">✓ Signature validée</span><button class="btn sm" data-act="unlock" data-k="${k}">Modifier</button>`:`<button class="btn sm" data-act="clr" data-k="${k}">Effacer</button><button class="btn p sm" data-act="lock" data-k="${k}">Valider la signature</button>`}</div>`;
+    };
     h=`<h2>Signatures</h2>${eO?'':blk(SIG[0])}<div class="g">${fld(['dent','Date d’entrée dans le logement','date'])}</div><label class="f">Commentaire du locataire<textarea rows="4" data-k="com">${esc(S.v.com||'')}</textarea></label>${sO?'':blk(SIG[1])}${blk(SIG[2])}${blk(SIG[3])}`;
   }
   else{
@@ -302,6 +316,8 @@ document.addEventListener('click',e=>{
   if(d.act==='delx'){S.x[d.r]=(S.x[d.r]||[]).filter(x=>x.id!==d.id);render();save()}
   if(d.act==='donebtn'){S.v[d.r+'.done']=!S.v[d.r+'.done'];render();save()}
   if(d.act==='addiv'){const l=S.iv[S.iv.length-1],id='i'+Date.now();S.iv.push({id});if(l)S.v['iv'+id+'p']=S.v['iv'+l.id+'p'];S.v['iv'+id+'n']='1';render();save()}
+  if(d.act==='dupsan'){(S.san[d.r]=S.san[d.r]||[]).push(uid());render();save()}
+  if(d.act==='delsan'){S.san[d.r]=(S.san[d.r]||[]).filter(x=>x!==d.id);render();save()}
   if(d.act==='deliv'){S.iv=S.iv.filter(r=>r.id!==d.r);delete S.ph['iv'+d.r];render();save();savePh()}
   if(d.act==='addan'){S.an.push({id:'a'+Date.now(),n:'Élément'});render();save()}
   if(d.act==='delan'){S.an=S.an.filter(o=>o.id!==d.r);render();save()}
@@ -311,6 +327,8 @@ document.addEventListener('click',e=>{
   if(d.act==='dupkl'){const i=S.kl.findIndex(o=>o.id===d.r);S.kl.splice(i+1,0,{id:'k'+Date.now(),n:S.kl[i].n});render();save()}
   if(d.act==='rmph'){S.ph[d.r].splice(+d.i,1);const el=document.getElementById('phs-'+d.r)||$('#phs');if(el)el.innerHTML=phView(d.r);savePh()}
   if(d.act==='clr'){delete S.v[d.k];save();sigInit()}
+  if(d.act==='lock'){if(!S.v[d.k]){msg('Signe d’abord avant de valider');return}S.v[d.k+'lock']=true;save();render()}
+  if(d.act==='unlock'){delete S.v[d.k+'lock'];save();render()}
   if(d.act==='copy'){const val=S.v[d.src]||'';if(!val)return;
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(val).then(()=>msg('Copié')).catch(()=>msg('Copie impossible'));
     else msg('Copie non disponible sur ce navigateur')}
@@ -344,6 +362,7 @@ function sigInit(){
     const k=c.dataset.k,x=c.getContext('2d');c.width=c.clientWidth*2;c.height=c.clientHeight*2;
     x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.lineWidth=4;x.lineCap='round';x.strokeStyle='#000';
     if(S.v[k]){const im=new Image();im.onload=()=>x.drawImage(im,0,0,c.width,c.height);im.src=S.v[k]}
+    if(S.v[k+'lock'])return;
     let on=false;const p=e=>{const r=c.getBoundingClientRect();return[(e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height]};
     c.onpointerdown=e=>{on=true;c.setPointerCapture(e.pointerId);const[a,b]=p(e);x.beginPath();x.moveTo(a,b)};
     c.onpointermove=e=>{if(!on)return;const[a,b]=p(e);x.lineTo(a,b);x.stroke()};
@@ -360,12 +379,13 @@ function recap(){
   const typ=[S.v.sensE&&'Entrant',S.v.sensS&&'Sortant'].filter(Boolean).join(' + ')||'—';
   let h=`<div class="hdband"><span class="brand">DIAG-LOC</span><span class="sub">Constat d’état des lieux</span></div><table>${row('Type d’état des lieux',typ)}</table>${tbl(GEN)}<h2>Compteurs</h2><table>${S.cp.map(c=>{const k='cp'+c.id,l=MT[c.t];return row(c.t+(S.v[k+'n']?' n° '+S.v[k+'n']:'')+(S.v[k+'e']?' ('+S.v[k+'e']+')':''),[S.v[k+'a']&&l[0]+' : '+S.v[k+'a'],S.v[k+'b']&&l[1]+' : '+S.v[k+'b']].filter(Boolean).join(' — '))}).join('')}</table>${tbl(CPT)}`;
   const line=(p,key,def)=>{const [n,o,cn,chk,dp,cond]=def,k=p+'.'+key,s=S.v[k+'s'],b=S.v[k+'b'];
-    const ty=[S.v[k+'o'],...(cn||[]).map((c,j)=>S.v[k+'c'+j]?c+' '+S.v[k+'c'+j]:''),...(chk||[]).map((c,j)=>S.v[k+'x'+j]?c:''),cond&&S.v[k+'cc']?cond.label+' '+S.v[k+'cc']:''].filter(Boolean).join(', ');
+    const ty=[S.v[k+'o'],S.v[k+'o2'],...(cn||[]).map((c,j)=>S.v[k+'c'+j]?c+' '+S.v[k+'c'+j]:''),...(chk||[]).map((c,j)=>S.v[k+'x'+j]?c:''),cond&&S.v[k+'cc']?cond.label+' '+S.v[k+'cc']:''].filter(Boolean).join(', ');
     if(!(s||b||ty||S.v[k+'t']||S.v[k+'1']||S.v[k+'2']))return '';
     tick(s);if(S.v[k+'1'])cnt.r1++;if(S.v[k+'2'])cnt.r2++;
     return `<tr style="background:${STCLR[s]||''}"><td>${esc(n)}</td><td>${esc(ty)}</td><td>${esc(s||'')}</td><td>${esc(S.v[k+'t']||'')}</td><td>${S.v[k+'1']?'×':''}</td><td>${S.v[k+'2']?'×':''}</td><td>${esc(b||'')}</td></tr>`};
   const th='<tr><th>Élément</th><th>Détail</th><th>État</th><th>TrCh</th><th>1</th><th>2</th><th>Observations</th></tr>';
-  const snr=id=>SN.map((n,i)=>{const k='sn'+id+'.'+i+'.',s=S.v[k+'s'];tick(s);return rowS(n,[S.v[k+'r'],s,...SC.map((c,j)=>S.v[k+j]&&c+' '+S.v[k+j]),S.v[k+'b']].filter(Boolean).join(' · '),s)}).join('');
+  const sanRowGen=(k,n)=>{const s=S.v[k+'s'];tick(s);return rowS(n,[S.v[k+'r'],s,...SC.map((c,j)=>S.v[k+j]&&c+' '+S.v[k+j]),S.v[k+'b']].filter(Boolean).join(' · '),s)};
+  const snr=id=>SN.map((n,i)=>sanRowGen('sn'+id+'.'+i+'.',n)).join('')+(S.san[id]||[]).map(eid=>sanRowGen('sn'+id+'.x'+eid+'.','Lavabo')).join('');
   const wcr=id=>{const k='wcg'+id+'.';WCF.forEach((c,j)=>tick(S.v[k+j]));return row('WC',[...WCF.map((c,j)=>S.v[k+j]&&c+' '+S.v[k+j]),S.v[k+'b']].filter(Boolean).join(' · '))};
   const lavR=id=>{const k='wcs'+id+'.',s=S.v[k+'s'];tick(s);return rowS('Lave-main',[S.v[k+'r'],s,...SC_LAV.map((c,j)=>S.v[k+j]&&c+' '+S.v[k+j]),S.v[k+'b']].filter(Boolean).join(' · '),s)};
   S.rooms.forEach(r=>{const ex=S.x[r.id]||[];
@@ -422,7 +442,7 @@ let pendingImport=null;
 function showModal(html){$('#modalBody').innerHTML=html;$('#modal').classList.add('show')}
 function hideModal(){$('#modal').classList.remove('show');$('#modalBody').innerHTML=''}
 function applyImport(j,toSortie){
-  S.v=j.v||{};S.rooms=j.rooms||S.rooms;S.cp=j.cp||S.cp;S.x=j.x||{};S.iv=j.iv||[];
+  S.v=j.v||{};S.rooms=j.rooms||S.rooms;S.cp=j.cp||S.cp;S.x=j.x||{};S.iv=j.iv||[];S.san=j.san||{};
   S.an=j.an||S.an;S.kl=j.kl||S.kl;S.ph=j.ph||{};
   if(toSortie){
     S.v.sensS=true;delete S.v.sensE;
