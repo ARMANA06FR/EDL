@@ -156,7 +156,7 @@ const MT={'Eau':['Froide (m³)','Chaude (m³)'],'Électricité':['HP (kWh)','HC 
 const SS=ST.map(x=>x[0]),SN=['Baignoire','Douche','Lavabo','Bidet'],SC=['Mél./Mitig.','Bonde','Siphon','Jt silicone','Flexible','Douchette','Inverseur'];
 const ANN0=['Boîte à lettres','Cave','Garage','Grenier'];
 const KEYS0=['Porte immeuble','Serrure principale','Verrou haut','Verrou bas','Boîte à lettres','Accès cave','Cave','Accès garage','Garage','Grenier','Porte SAS','Clé magnétique','Émetteur','Non identifiées'];
-const SIG=[['sgS','Locataire sortant / représentant','sor'],['sgE','Locataire entrant / représentant','ent'],['sgP','Propriétaire','client'],['sgX','Expert DIAG-LOC','']];
+const SIG=[['sgS','Locataire sortant / représentant','sor'],['sgE','Locataire entrant / représentant','ent'],['sgP','Propriétaire','client'],['sgX','Expert EDL 06 IMMO','']];
 const GENKEYS=GEN.flatMap(([,f])=>f.map(x=>x[0])),CPTKEYS=CPT.flatMap(([,f])=>f.map(x=>x[0]));
 const QB=['TDH','Fiss.','Éclats','Rayures','DDE','Traces','Colmatages','Reprises peinture','Sale','Ancien','Usure normale','Mal fixé','Cassé','Impact','(BE)','(EU)','(ME)'];
 const DD=['Table','Chaise','Table basse','Meuble TV','Télévision','Canapé','Canapé-lit','Fauteuil','Lit','Matelas','Sommier','Alèse','Armoire','Commode','Bureau','Miroir','Rideaux','Store vénitien','Tringle','Lampadaire','Suspension','Lustre','Frigo-congélateur','Four','Micro-ondes','Plaque vitro','Plaque induction','Hotte','Lave-linge','Bouilloire','Grille-pain','Machine à café','Aspirateur','Fer à repasser','Planche à repasser','Sèche-cheveux','Vaisselle','Poubelle','Étendoir','Table de jardin','Chaise de jardin'];
@@ -275,52 +275,62 @@ function compareList(){
   const bv=S.baseline.v||{};
   const SEV={NF:0,BE:1,EU:2,ME:3,HS:4};
   const out=[];
-  const add=(roomLabel,name,sk,obsKey)=>{
+  const add=(roomLabel,name,sk,obsKey,flagBase)=>{
     const s1=bv[sk],s2=S.v[sk];
-    if(!s1&&!s2)return;
+    const flag1=flagBase?!!S.v[flagBase+'1']:false,flag2=flagBase?!!S.v[flagBase+'2']:false;
+    if(!s1&&!s2&&!flag1&&!flag2)return;
     let status='same';
     if(s1!==s2){
       if(SEV[s1]!==undefined&&SEV[s2]!==undefined)status=SEV[s2]>SEV[s1]?'deg':(SEV[s2]<SEV[s1]?'better':'same');
       else status='diff';
     }
-    out.push({roomLabel,name,sk,obsKey,s1,s2,status});
+    if(flag1||flag2)status='deg';
+    out.push({roomLabel,name,sk,obsKey,s1,s2,status,flag1,flag2});
   };
   S.rooms.forEach(r=>{
     const ex=S.x[r.id]||[];
-    TPL[r.t].i.forEach((x,i)=>{const k=r.id+'.t'+i;add(r.n,x[0],k+'s',k+'b')});
-    ex.forEach(e=>{const k=r.id+'.'+e.id;add(r.n,e.n,k+'s',k+'b')});
+    TPL[r.t].i.forEach((x,i)=>{const k=r.id+'.t'+i;add(r.n,x[0],k+'s',k+'b',k)});
+    ex.forEach(e=>{const k=r.id+'.'+e.id;add(r.n,e.n,k+'s',k+'b',k)});
     if(r.t==='sdb'){SN.forEach((n,i)=>{const k='sn'+r.id+'.'+i+'.';add(r.n,n,k+'s',k+'b')});(S.san[r.id]||[]).forEach(eid=>{const k='sn'+r.id+'.x'+eid+'.';add(r.n,'Lavabo',k+'s',k+'b')})}
     if(r.t==='wc'){const kg='wcg'+r.id+'.';WCF.forEach((c,j)=>add(r.n,c,kg+j,null));const ks='wcs'+r.id+'.';add(r.n,'Lave-main',ks+'s',ks+'b')}
   });
   const bIv=S.baseline.iv||[];
   S.iv.forEach(cur=>{
-    const base=bIv.find(b=>b.id===cur.id);if(!base)return;
-    const k='iv'+cur.id,ks=k+'s',kn=k+'n';
-    const n1=parseInt(bv[kn])||0,n2=parseInt(S.v[kn])||0,s1=bv[ks],s2=S.v[ks];
-    let status='same';
-    if(n2<n1)status='deg';
-    else if(s1!==s2){
-      if(SEV[s1]!==undefined&&SEV[s2]!==undefined)status=SEV[s2]>SEV[s1]?'deg':(SEV[s2]<SEV[s1]?'better':'same');
-      else status='diff';
+    const base=bIv.find(b=>b.id===cur.id);
+    const k='iv'+cur.id,ks=k+'s',kn=k+'n',ka=k+'a';
+    let status='same',s1='—',s2='—';const detail=[];
+    if(base){
+      const n1=parseInt(bv[kn])||0,n2=parseInt(S.v[kn])||0,st1=bv[ks],st2=S.v[ks];
+      if(n2<n1)status='deg';
+      else if(st1!==st2){
+        if(SEV[st1]!==undefined&&SEV[st2]!==undefined)status=SEV[st2]>SEV[st1]?'deg':(SEV[st2]<SEV[st1]?'better':'same');
+        else status='diff';
+      }
+      if(n2!==n1)detail.push('Nb '+n1+' → '+n2);
+      if(st1!==st2)detail.push('État '+(st1||'—')+' → '+(st2||'—'));
+      s1=String(n1);s2=String(n2);
     }
-    if(status==='same')return;
-    const detail=[];if(n2!==n1)detail.push('Nb '+n1+' → '+n2);if(s1!==s2)detail.push('État '+(s1||'—')+' → '+(s2||'—'));
-    const label=S.v[k+'d']||bv[k+'d']||'Objet';
-    out.push({roomLabel:'Inventaire',name:label+(detail.length?' — '+detail.join(', '):''),sk:k+'.qtydeg',obsKey:k+'b',s1:String(n1),s2:String(n2),status});
+    const aspect=S.v[ka],aspectBad=aspect==='ME'||aspect==='HS';
+    const flag1=!!S.v[k+'1'],flag2=!!S.v[k+'2'];
+    if((aspectBad||flag1||flag2)&&status==='same')status='deg';
+    if(status==='same'&&!aspectBad&&!flag1&&!flag2)return;
+    if(aspectBad)detail.push('Aspect '+aspect);
+    const label=S.v[k+'d']||(base&&bv[k+'d'])||'Objet';
+    out.push({roomLabel:'Inventaire',name:label+(detail.length?' — '+detail.join(', '):''),sk:k+'.qtydeg',obsKey:k+'b',s1,s2,status,flag1,flag2});
   });
   const bKl=S.baseline.kl||[];
   S.kl.forEach(cur=>{
     const base=bKl.find(b=>b.id===cur.id);if(!base)return;
     const k='kl'+cur.id+'.',q1=parseInt(bv[k+'q'])||0,q2=parseInt(S.v[k+'q'])||0;
-    if(q2<q1)out.push({roomLabel:'Clés',name:(cur.n||'Clé')+' — quantité '+q1+' → '+q2,sk:k+'qtydeg',obsKey:null,s1:String(q1),s2:String(q2),status:'deg'});
+    if(q2<q1)out.push({roomLabel:'Clés',name:(cur.n||'Clé')+' — quantité '+q1+' → '+q2,sk:k+'qtydeg',obsKey:null,s1:String(q1),s2:String(q2),status:'deg',flag1:false,flag2:false});
     const s1=bv[k+'s'],s2=S.v[k+'s'];
     if(s1!==s2&&(SEV[s1]!==undefined||SEV[s2]!==undefined)){
       const st=SEV[s1]!==undefined&&SEV[s2]!==undefined?(SEV[s2]>SEV[s1]?'deg':(SEV[s2]<SEV[s1]?'better':'same')):'diff';
-      if(st!=='same')out.push({roomLabel:'Clés',name:(cur.n||'Clé')+' — état',sk:k+'s',obsKey:null,s1,s2,status:st});
+      if(st!=='same')out.push({roomLabel:'Clés',name:(cur.n||'Clé')+' — état',sk:k+'s',obsKey:null,s1,s2,status:st,flag1:false,flag2:false});
     }
   });
   if(S.v.net==='Moyen'||S.v.net==='Médiocre'){
-    out.push({roomLabel:'Nettoyage général',name:'État du nettoyage à la sortie',sk:'netg_flag',obsKey:'netgb',s1:'—',s2:S.v.net,status:'deg'});
+    out.push({roomLabel:'Nettoyage général',name:'État du nettoyage à la sortie',sk:'netg_flag',obsKey:'netgb',s1:'—',s2:S.v.net,status:'deg',flag1:false,flag2:false});
   }
   return out;
 }
@@ -365,8 +375,9 @@ function renderCore(){
         if(imp)total+=parseFloat(S.v[ck])||0;
         extra=`<div class="row"><label class="f" style="flex-direction:row;align-items:center;gap:6px;width:auto"><input type="checkbox" data-act="impchk" data-k="${ik}" ${imp?'checked':''}> Imputable au locataire</label><label class="f" style="width:140px">Coût estimé (€)<input type="number" min="0" step="0.01" inputmode="decimal" data-k="${ck}" value="${esc(S.v[ck]||'')}"></label></div>`;
       }
+      const flagBadges=`${x.flag1?'<span class="badge deg">1 · À réparer</span>':''}${x.flag2?'<span class="badge deg">2 · À nettoyer</span>':''}`;
       const obs=x.obsKey&&S.v[x.obsKey]?`<p class="lg">Obs. sortie : ${esc(S.v[x.obsKey])}</p>`:'';
-      return `<div class="it"><div class="hd"><b>${esc(x.roomLabel)} — ${esc(x.name)}</b><span class="badge ${x.status}">${lab}</span></div><div class="g"><label class="f">Entrée<input disabled value="${esc(x.s1||'—')}"></label><label class="f">Sortie<input disabled value="${esc(x.s2||'—')}"></label></div>${extra}${obs}</div>`;
+      return `<div class="it"><div class="hd"><b>${esc(x.roomLabel)} — ${esc(x.name)}</b><span class="badge ${x.status}">${lab}</span>${flagBadges}</div><div class="g"><label class="f">Entrée<input disabled value="${esc(x.s1||'—')}"></label><label class="f">Sortie<input disabled value="${esc(x.s2||'—')}"></label></div>${extra}${obs}</div>`;
     }).join('');
     h=`<h2>Comparatif entrée / sortie</h2>
     <div class="sum"><span class="sc" style="background:#fbe4e6">${counts.deg} dégradé(s)</span><span class="sc" style="background:#e8f5ec">${counts.better} amélioré(s)/nettoyé(s)</span><span class="sc" style="background:#eef1f2">${counts.same+counts.diff} identique(s)</span></div>
@@ -493,7 +504,7 @@ function recap(){
   const rowS=(a,b,s)=>b?`<tr style="background:${STCLR[s]||''}"><td>${esc(a)}</td><td>${esc(b)}</td></tr>`:'';
   const tbl=G=>G.map(([t,f])=>`<h2>${esc(t)}</h2><table>${f.map(([k,l])=>row(l,S.v[k])).join('')}</table>`).join('');
   const typ=[S.v.sensE&&'Entrant',S.v.sensS&&'Sortant'].filter(Boolean).join(' + ')||'—';
-  let h=`<div class="hdband"><span class="brand">DIAG-LOC</span><span class="sub">Constat d’état des lieux</span></div><table>${row('Type d’état des lieux',typ)}</table>${tbl(GEN)}<h2>Compteurs</h2><table>${S.cp.map(c=>{const k='cp'+c.id,l=MT[c.t];return row(c.t+(S.v[k+'n']?' n° '+S.v[k+'n']:'')+(S.v[k+'e']?' ('+S.v[k+'e']+')':''),[S.v[k+'a']&&l[0]+' : '+S.v[k+'a'],S.v[k+'b']&&l[1]+' : '+S.v[k+'b']].filter(Boolean).join(' — '))}).join('')}</table>${tbl(CPT)}`;
+  let h=`<div class="hdband"><span class="brand">EDL 06 IMMO</span><span class="sub">Constat d’état des lieux</span></div><table>${row('Type d’état des lieux',typ)}</table>${tbl(GEN)}<h2>Compteurs</h2><table>${S.cp.map(c=>{const k='cp'+c.id,l=MT[c.t];return row(c.t+(S.v[k+'n']?' n° '+S.v[k+'n']:'')+(S.v[k+'e']?' ('+S.v[k+'e']+')':''),[S.v[k+'a']&&l[0]+' : '+S.v[k+'a'],S.v[k+'b']&&l[1]+' : '+S.v[k+'b']].filter(Boolean).join(' — '))}).join('')}</table>${tbl(CPT)}`;
   const line=(p,key,def)=>{const [n,o,cn,chk,dp,cond]=def,k=p+'.'+key,s=S.v[k+'s'],b=S.v[k+'b'];
     const ty=[S.v[k+'o'],S.v[k+'o2'],...(cn||[]).map((c,j)=>S.v[k+'c'+j]?c+' '+S.v[k+'c'+j]:''),...(chk||[]).map((c,j)=>S.v[k+'x'+j]?c:''),cond&&S.v[k+'cc']?cond.label+' '+S.v[k+'cc']:''].filter(Boolean).join(', ');
     if(!(s||b||ty||S.v[k+'t']||S.v[k+'1']||S.v[k+'2']))return '';
@@ -520,7 +531,7 @@ function recap(){
 }
 function buildDoc(){
   const h=recap();
-  return '<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>État des lieux — DIAG-LOC</title><style>body{font:14px/1.4 system-ui,sans-serif;margin:20px;color:#17252d;max-width:900px}table{border-collapse:separate;border-spacing:0 6px;width:100%;margin:6px 0 16px;font-size:13px}td,th{border:1px solid #e2e6e8;padding:7px 9px;text-align:left;vertical-align:top}tr td:first-child,tr th:first-child{border-radius:8px 0 0 8px}tr td:last-child,tr th:last-child{border-radius:0 8px 8px 0}th{background:#eef3f5;font-weight:600}h2{margin:20px 0 4px;font-size:17px}img{max-width:160px;margin:3px;border-radius:6px}.hdband{background:#0e6d8c;color:#fff;border-radius:12px;padding:18px 22px;margin-bottom:14px}.hdband .brand{font-weight:800;font-size:22px;letter-spacing:.06em;display:block}.hdband .sub{font-size:13px;opacity:.9}.sum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}.sc{font-size:12px;padding:5px 10px;border-radius:20px;color:#333;font-weight:500}@media print{body{margin:8mm}}</style><body>'+h;
+  return '<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>État des lieux — EDL 06 IMMO</title><style>body{font:14px/1.4 system-ui,sans-serif;margin:20px;color:#17252d;max-width:900px}table{border-collapse:separate;border-spacing:0 6px;width:100%;margin:6px 0 16px;font-size:13px}td,th{border:1px solid #e2e6e8;padding:7px 9px;text-align:left;vertical-align:top}tr td:first-child,tr th:first-child{border-radius:8px 0 0 8px}tr td:last-child,tr th:last-child{border-radius:0 8px 8px 0}th{background:#eef3f5;font-weight:600}h2{margin:20px 0 4px;font-size:17px}img{max-width:160px;margin:3px;border-radius:6px}.hdband{background:#0e6d8c;color:#fff;border-radius:12px;padding:18px 22px;margin-bottom:14px}.hdband .brand{font-weight:800;font-size:22px;letter-spacing:.06em;display:block}.hdband .sub{font-size:13px;opacity:.9}.sum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}.sc{font-size:12px;padding:5px 10px;border-radius:20px;color:#333;font-weight:500}@media print{body{margin:8mm}}</style><body>'+h;
 }
 const docName=()=>(S.v.rdv?S.v.rdv+' ':'')+'EDL.html';
 $('#exp').onclick=async()=>{
@@ -541,7 +552,7 @@ $('#shr').onclick=async()=>{
   const doc=buildDoc(),name=docName();
   const file=new File([doc],name,{type:'text/html'});
   if(navigator.canShare&&navigator.canShare({files:[file]})){
-    try{await navigator.share({files:[file],title:'État des lieux — DIAG-LOC',text:'Constat d’état des lieux'});return}
+    try{await navigator.share({files:[file],title:'État des lieux — EDL 06 IMMO',text:'Constat d’état des lieux'});return}
     catch(e){if(e&&e.name==='AbortError')return;msg('Partage annulé')}
   }else{
     msg('Partage natif non disponible — utilise Exporter puis joins le fichier toi-même');
@@ -596,12 +607,12 @@ async function exportDecompte(){
   const rows=list.map(x=>{const c=parseFloat(S.v[x.sk+'cout'])||0;total+=c;
     return `<tr><td>${esc(x.roomLabel)}</td><td>${esc(x.name)}</td><td>${esc(x.s1||'—')}</td><td>${esc(x.s2||'—')}</td><td>${esc(S.v[x.obsKey]||'')}</td><td style="text-align:right">${c.toFixed(2)} €</td></tr>`;
   }).join('');
-  const h=`<div class="hdband"><span class="brand">DIAG-LOC</span><span class="sub">Décompte de retenue sur dépôt de garantie</span></div>
+  const h=`<div class="hdband"><span class="brand">EDL 06 IMMO</span><span class="sub">Décompte de retenue sur dépôt de garantie</span></div>
     <table><tr><th>Bien</th><td>${esc(S.v.adr||'')}</td></tr><tr><th>Locataire sortant</th><td>${esc(S.v.sor||'')}</td></tr><tr><th>N° RDV</th><td>${esc(S.v.rdv||'')}</td></tr><tr><th>Date</th><td>${esc(S.v.date||'')}</td></tr></table>
     <table><tr><th>Pièce</th><th>Élément</th><th>État entrée</th><th>État sortie</th><th>Observations</th><th>Coût</th></tr>${rows}</table>
     <h2>Total retenu : ${total.toFixed(2).replace('.',',')} €</h2>`;
   const name=(S.v.rdv?S.v.rdv+' ':'')+'Décompte.html';
-  const doc='<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Décompte — DIAG-LOC</title><style>body{font:14px/1.4 system-ui,sans-serif;margin:20px;color:#17252d;max-width:900px}table{border-collapse:separate;border-spacing:0 6px;width:100%;margin:6px 0 16px;font-size:13px}td,th{border:1px solid #e2e6e8;padding:7px 9px;text-align:left;vertical-align:top}th{background:#eef3f5;font-weight:600}.hdband{background:#0e6d8c;color:#fff;border-radius:12px;padding:18px 22px;margin-bottom:14px}.hdband .brand{font-weight:800;font-size:22px;letter-spacing:.06em;display:block}.hdband .sub{font-size:13px;opacity:.9}</style><body>'+h;
+  const doc='<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Décompte — EDL 06 IMMO</title><style>body{font:14px/1.4 system-ui,sans-serif;margin:20px;color:#17252d;max-width:900px}table{border-collapse:separate;border-spacing:0 6px;width:100%;margin:6px 0 16px;font-size:13px}td,th{border:1px solid #e2e6e8;padding:7px 9px;text-align:left;vertical-align:top}th{background:#eef3f5;font-weight:600}.hdband{background:#0e6d8c;color:#fff;border-radius:12px;padding:18px 22px;margin-bottom:14px}.hdband .brand{font-weight:800;font-size:22px;letter-spacing:.06em;display:block}.hdband .sub{font-size:13px;opacity:.9}</style><body>'+h;
   try{const d=window.claude&&await claude.use('downloads');if(d){await d.save({filename:name,data:doc});return}}catch(e){if(e&&e.code==='declined')return}
   const blob=new Blob([doc],{type:'text/html'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();

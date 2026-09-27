@@ -1,7 +1,7 @@
 {
-  "name": "État des lieux — DIAG-LOC",
+  "name": "État des lieux — EDL 06 IMMO",
   "short_name": "EDL",
-  "description": "Grille numérique d'état des lieux DIAG-LOC",
+  "description": "Grille numérique d'état des lieux EDL 06 IMMO",
   "start_url": "./index.html",
   "scope": "./",
   "id": "/",
