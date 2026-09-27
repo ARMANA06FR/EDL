@@ -45,6 +45,10 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 .it.filled{background:#eaf6ee}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .it.filled{background:#16281c}}
 :root[data-theme="dark"] .it.filled{background:#16281c}
+.badge{font-size:11px;padding:3px 8px;border-radius:12px;font-weight:600;flex:none}
+.badge.deg{background:#fbe4e6;color:#c62f3b}
+.badge.better{background:#e8f5ec;color:#2e8b57}
+.badge.diff,.badge.same{background:#eef1f2;color:#5d6d76}
 .mini.d{border-color:var(--hs);color:var(--hs)}
 .tb .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--be);margin-left:5px;vertical-align:middle}
 .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
@@ -157,16 +161,34 @@ const GENKEYS=GEN.flatMap(([,f])=>f.map(x=>x[0])),CPTKEYS=CPT.flatMap(([,f])=>f.
 const QB=['TDH','Fiss.','Éclats','Rayures','DDE','Traces','Colmatages','Reprises peinture','Sale','Ancien','Usure normale','Mal fixé','Cassé','Impact','(BE)','(EU)','(ME)'];
 const DD=['Table','Chaise','Table basse','Meuble TV','Télévision','Canapé','Canapé-lit','Fauteuil','Lit','Matelas','Sommier','Alèse','Armoire','Commode','Bureau','Miroir','Rideaux','Store vénitien','Tringle','Lampadaire','Suspension','Lustre','Frigo-congélateur','Four','Micro-ondes','Plaque vitro','Plaque induction','Hotte','Lave-linge','Bouilloire','Grille-pain','Machine à café','Aspirateur','Fer à repasser','Planche à repasser','Sèche-cheveux','Vaisselle','Poubelle','Étendoir','Table de jardin','Chaise de jardin'];
 const uid=()=>'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const clone=o=>JSON.parse(JSON.stringify(o));
+let cmpShowAll=false;
 
 function fresh(){return {v:{sgXn:'ARMANA Frédéric'},rooms:[{id:'r1',n:'Entrée',t:'entree'},{id:'r2',n:'Cuisine',t:'cuisine'},{id:'r3',n:'Séjour',t:'base'},{id:'r4',n:'Chambre 1',t:'base'},{id:'r5',n:'Chambre 2',t:'base'},{id:'r6',n:'Salle de bain',t:'sdb'},{id:'r7',n:'WC',t:'wc'}],
  ph:{},tab:'gen',cp:[{id:'c1',t:'Eau',orig:1},{id:'c2',t:'Électricité',orig:1},{id:'c3',t:'Gaz',orig:1}],x:{},iv:[],san:{},
- an:ANN0.map((n,i)=>({id:'a'+i,n,orig:1})),kl:KEYS0.map((n,i)=>({id:'k'+i,n,orig:1}))}}
+ an:ANN0.map((n,i)=>({id:'a'+i,n,orig:1})),kl:KEYS0.map((n,i)=>({id:'k'+i,n,orig:1})),baseline:null}}
 let S=fresh();
-function loadLS(){try{const a=localStorage.getItem('edl1');if(a)Object.assign(S,JSON.parse(a));const p=localStorage.getItem('edl1p');if(p)S.ph=JSON.parse(p)}catch(e){}}
+function loadLS(){
+  try{
+    const a=localStorage.getItem('edl1');
+    if(a){const j=JSON.parse(a);if(isObj(j))Object.assign(S,j);}
+    const p=localStorage.getItem('edl1p');
+    if(p){const ph=JSON.parse(p);if(isObj(ph))S.ph=ph;}
+  }catch(e){}
+  if(!Array.isArray(S.rooms)||!S.rooms.length)S.rooms=fresh().rooms;
+  if(!Array.isArray(S.cp)||!S.cp.length)S.cp=fresh().cp;
+  if(!Array.isArray(S.an)||!S.an.length)S.an=fresh().an;
+  if(!Array.isArray(S.kl)||!S.kl.length)S.kl=fresh().kl;
+  if(!Array.isArray(S.iv))S.iv=[];
+  if(!isObj(S.v))S.v={};
+  if(!isObj(S.x))S.x={};
+  if(!isObj(S.san))S.san={};
+  if(!isObj(S.ph))S.ph={};
+}
 loadLS();
 let tm;
 function msg(t){$('#st').textContent=t;clearTimeout(tm);tm=setTimeout(()=>$('#st').textContent='',2500)}
-function save(){try{localStorage.setItem('edl1',JSON.stringify({v:S.v,rooms:S.rooms,tab:S.tab,cp:S.cp,x:S.x,iv:S.iv,an:S.an,kl:S.kl,san:S.san}))}catch(e){msg('Sauvegarde impossible')}}
+function save(){try{localStorage.setItem('edl1',JSON.stringify({v:S.v,rooms:S.rooms,tab:S.tab,cp:S.cp,x:S.x,iv:S.iv,an:S.an,kl:S.kl,san:S.san,baseline:S.baseline}))}catch(e){msg('Sauvegarde impossible')}}
 function savePh(){try{localStorage.setItem('edl1p',JSON.stringify(S.ph))}catch(e){msg('Mémoire pleine : exporte avant de continuer')}}
 const isSortant=()=>!!S.v.sensS;
 
@@ -248,15 +270,44 @@ function tabFilled(id){
   if(S.rooms.some(x=>x.id===id))return !!S.v[id+'.done'];
   return Object.keys(S.v).some(k=>k.indexOf(id+'.')===0&&S.v[k])||!!(S.ph[id]&&S.ph[id].length);
 }
+function compareList(){
+  if(!S.baseline)return [];
+  const bv=S.baseline.v||{};
+  const SEV={NF:0,BE:1,EU:2,ME:3,HS:4};
+  const out=[];
+  const add=(roomLabel,name,sk,obsKey)=>{
+    const s1=bv[sk],s2=S.v[sk];
+    if(!s1&&!s2)return;
+    let status='same';
+    if(s1!==s2){
+      if(SEV[s1]!==undefined&&SEV[s2]!==undefined)status=SEV[s2]>SEV[s1]?'deg':(SEV[s2]<SEV[s1]?'better':'same');
+      else status='diff';
+    }
+    out.push({roomLabel,name,sk,obsKey,s1,s2,status});
+  };
+  S.rooms.forEach(r=>{
+    const ex=S.x[r.id]||[];
+    TPL[r.t].i.forEach((x,i)=>{const k=r.id+'.t'+i;add(r.n,x[0],k+'s',k+'b')});
+    ex.forEach(e=>{const k=r.id+'.'+e.id;add(r.n,e.n,k+'s',k+'b')});
+    if(r.t==='sdb'){SN.forEach((n,i)=>{const k='sn'+r.id+'.'+i+'.';add(r.n,n,k+'s',k+'b')});(S.san[r.id]||[]).forEach(eid=>{const k='sn'+r.id+'.x'+eid+'.';add(r.n,'Lavabo',k+'s',k+'b')})}
+    if(r.t==='wc'){const kg='wcg'+r.id+'.';WCF.forEach((c,j)=>add(r.n,c,kg+j,null));const ks='wcs'+r.id+'.';add(r.n,'Lave-main',ks+'s',ks+'b')}
+  });
+  return out;
+}
 function tabs(){
   const t=[['gen','Général'],['cpt','Compteurs'],...S.rooms.map(r=>[r.id,r.n||'Pièce']),['inv','Inventaire'],['ann','Annexes'],['cles','Clés']];
   if(isSortant())t.push(['net','Nettoyage']);
+  if(S.baseline)t.push(['cmp','Comparatif']);
   t.push(['sig','Signatures']);
   $('#tabs').innerHTML=t.map(([k,l])=>`<button class="tb${S.tab===k?' on':''}" data-tab="${k}">${esc(l)}${tabFilled(k)?'<span class="dot"></span>':''}</button>`).join('');
 }
 const total=()=>S.kl.reduce((a,o)=>a+(parseInt(S.v['kl'+o.id+'.q'])||0),0);
 function phView(id){return (S.ph[id]||[]).map((d,i)=>`<div><img src="${d}" alt="Photo ${i+1}"><button data-act="rmph" data-r="${id}" data-i="${i}" aria-label="Supprimer la photo">×</button></div>`).join('')}
 function render(){
+  try{renderCore()}
+  catch(e){console.error(e);msg('Erreur d’affichage — touche « Nouveau » si le formulaire reste bloqué');}
+}
+function renderCore(){
   tabs();const a=$('#app'),T=S.tab;let h='';
   if(T==='gen'){
     const sO=S.v.sensS&&!S.v.sensE,eO=S.v.sensE&&!S.v.sensS;
@@ -270,6 +321,30 @@ function render(){
   else if(T==='ann')h=`<h2>Annexes</h2>${dynList(S.an,'an',(k,o)=>`<div class="g">${['Cave','Garage','Grenier'].includes(o.n)?`<label class="f">N°<input data-k="${k}num" value="${esc(S.v[k+'num']||'')}"></label>`:''}<label class="f">Porte${sel(k+'p',SS)}</label><label class="f">Serrure${sel(k+'s',SS)}</label><label class="f">Vide ou m³ à vider<input data-k="${k}m" value="${esc(S.v[k+'m']||'')}"></label></div>${ob(k)}`)}`;
   else if(T==='cles')h=`<h2>Clés remises</h2>${dynList(S.kl,'kl',(k,o)=>`<div class="g"><label class="f">Quantité<input type="number" min="0" inputmode="numeric" data-k="${k}q" value="${esc(S.v[k+'q']||'')}"></label>${['Émetteur','Clé magnétique'].includes(o.n)?`<label class="f">État${sel(k+'s',SS)}</label>`:''}</div>`)}<p><b>Total clés : <span id="tot">${total()}</span></b></p><h3>Observations</h3>${ob('clesg')}`;
   else if(T==='net')h=`<h2>Nettoyage général</h2><div class="row">${['Bon','Moyen','Médiocre'].map(o=>chip('net',o,o)).join('')}</div>${ob('netg')}`;
+  else if(T==='cmp'){
+    const list=compareList();
+    const counts={deg:0,better:0,same:0,diff:0};
+    list.forEach(x=>counts[x.status]++);
+    const shown=list.filter(x=>cmpShowAll||x.status!=='same');
+    let total=0;
+    const rows=shown.map(x=>{
+      const lab=x.status==='deg'?'Dégradation':x.status==='better'?'Amélioration':x.status==='diff'?'Écart':'Identique';
+      let extra='';
+      if(x.status==='deg'){
+        const ik=x.sk+'imp',ck=x.sk+'cout',imp=!!S.v[ik];
+        if(imp)total+=parseFloat(S.v[ck])||0;
+        extra=`<div class="row"><label class="f" style="flex-direction:row;align-items:center;gap:6px;width:auto"><input type="checkbox" data-act="impchk" data-k="${ik}" ${imp?'checked':''}> Imputable au locataire</label><label class="f" style="width:140px">Coût estimé (€)<input type="number" min="0" step="0.01" inputmode="decimal" data-k="${ck}" value="${esc(S.v[ck]||'')}"></label></div>`;
+      }
+      const obs=x.obsKey&&S.v[x.obsKey]?`<p class="lg">Obs. sortie : ${esc(S.v[x.obsKey])}</p>`:'';
+      return `<div class="it"><div class="hd"><b>${esc(x.roomLabel)} — ${esc(x.name)}</b><span class="badge ${x.status}">${lab}</span></div><div class="g"><label class="f">Entrée<input disabled value="${esc(x.s1||'—')}"></label><label class="f">Sortie<input disabled value="${esc(x.s2||'—')}"></label></div>${extra}${obs}</div>`;
+    }).join('');
+    h=`<h2>Comparatif entrée / sortie</h2>
+    <div class="sum"><span class="sc" style="background:#fbe4e6">${counts.deg} dégradé(s)</span><span class="sc" style="background:#e8f5ec">${counts.better} amélioré(s)/nettoyé(s)</span><span class="sc" style="background:#eef1f2">${counts.same+counts.diff} identique(s)</span></div>
+    <div class="act"><button class="btn sm" data-act="cmpToggle">${cmpShowAll?'Afficher seulement les écarts':'Afficher tout'}</button><label class="btn sm">Comparer avec un autre fichier<input type="file" accept="application/json" hidden id="cmpFile"></label><button class="btn d sm" data-act="cmpClear">Effacer la référence</button></div>
+    ${rows||'<p class="lg">Aucun écart à afficher.</p>'}
+    <h3 class="strong">Total imputable au locataire : ${total.toFixed(2).replace('.',',')} €</h3>
+    <div class="act"><button class="btn p sm" data-act="expDecompte">Exporter le décompte</button></div>`;
+  }
   else if(T==='inv')h=`<h2>Inventaire du mobilier</h2><div class="g">${fld(['ive','Entrée',['Établissement','Contrôle']])}${fld(['ivs','Sortie',['Établissement','Contrôle']])}</div><datalist id="dp">${S.rooms.map(r=>`<option value="${esc(r.n)}">`).join('')}</datalist><datalist id="dd">${DD.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>${S.iv.map(ivRow).join('')}<div class="act"><button class="btn p sm" data-act="addiv">Ajouter un objet</button></div>${photoBlock('inv','Photos mobilier')}`;
   else if(T==='sig'){
     const sO=S.v.sensS&&!S.v.sensE,eO=S.v.sensE&&!S.v.sensS;
@@ -329,6 +404,9 @@ document.addEventListener('click',e=>{
   if(d.act==='clr'){delete S.v[d.k];save();sigInit()}
   if(d.act==='lock'){if(!S.v[d.k]){msg('Signe d’abord avant de valider');return}S.v[d.k+'lock']=true;save();render()}
   if(d.act==='unlock'){delete S.v[d.k+'lock'];save();render()}
+  if(d.act==='cmpToggle'){cmpShowAll=!cmpShowAll;render()}
+  if(d.act==='cmpClear'){if(a.dataset.ok!=='1'){a.dataset.ok='1';a.textContent='Confirmer l’effacement';return}S.baseline=null;S.tab='gen';render();save()}
+  if(d.act==='expDecompte'){exportDecompte()}
   if(d.act==='copy'){const val=S.v[d.src]||'';if(!val)return;
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(val).then(()=>msg('Copié')).catch(()=>msg('Copie impossible'));
     else msg('Copie non disponible sur ce navigateur')}
@@ -347,6 +425,14 @@ document.addEventListener('input',onIn);
 document.addEventListener('change',async e=>{
   const t=e.target;
   if(t.dataset.rn)tabs();
+  if(t.id==='cmpFile'){const f=t.files[0];if(!f)return;
+    try{const j=JSON.parse(await f.text());
+      if(!isObj(j))throw new Error('bad shape');
+      S.baseline=clone({v:isObj(j.v)?j.v:{},rooms:Array.isArray(j.rooms)&&j.rooms.length?j.rooms:S.rooms,x:isObj(j.x)?j.x:{},san:isObj(j.san)?j.san:{}});
+      render();save();msg('Référence chargée');
+    }catch(x){msg('Fichier invalide ou illisible')}
+    t.value='';return}
+  if(t.dataset.act==='impchk'){S.v[t.dataset.k]=t.checked;save();render();return}
   if(t.dataset.ph){const id=t.dataset.ph;S.ph[id]=S.ph[id]||[];
     for(const f of t.files){try{S.ph[id].push(await shrink(f))}catch(x){msg('Photo illisible')}}
     const el=document.getElementById('phs-'+id)||$('#phs');if(el)el.innerHTML=phView(id);savePh();t.value=''}
@@ -434,27 +520,61 @@ $('#shr').onclick=async()=>{
 $('#rcls').onclick=()=>{$('#recap').classList.remove('show');$('#recap').innerHTML='';$('#rcls').style.display='none'};
 $('#expj').onclick=async()=>{
   const name='EDL_'+(S.v.date||new Date().toISOString().slice(0,10))+'.json';
-  const data=JSON.stringify({v:S.v,rooms:S.rooms,cp:S.cp,x:S.x,iv:S.iv,an:S.an,kl:S.kl,ph:S.ph});
+  const data=JSON.stringify({v:S.v,rooms:S.rooms,cp:S.cp,x:S.x,iv:S.iv,an:S.an,kl:S.kl,ph:S.ph,san:S.san,baseline:S.baseline});
   try{const d=window.claude&&await claude.use('downloads');if(d){await d.save({filename:name,data});return}}catch(e){}
   const a=document.createElement('a');a.href='data:application/json,'+encodeURIComponent(data);a.download=name;a.click();
 };
 let pendingImport=null;
 function showModal(html){$('#modalBody').innerHTML=html;$('#modal').classList.add('show')}
 function hideModal(){$('#modal').classList.remove('show');$('#modalBody').innerHTML=''}
+function isObj(x){return x&&typeof x==='object'&&!Array.isArray(x)}
 function applyImport(j,toSortie){
-  S.v=j.v||{};S.rooms=j.rooms||S.rooms;S.cp=j.cp||S.cp;S.x=j.x||{};S.iv=j.iv||[];S.san=j.san||{};
-  S.an=j.an||S.an;S.kl=j.kl||S.kl;S.ph=j.ph||{};
-  if(toSortie){
-    S.v.sensS=true;delete S.v.sensE;
-    if(S.v.ent)S.v.sor=S.v.ent;if(S.v.entem)S.v.sorem=S.v.entem;if(S.v.entte)S.v.sorte=S.v.entte;
-    delete S.v.ent;delete S.v.entem;delete S.v.entte;
-    S.ph={};
-    SIG.forEach(([k])=>{delete S.v[k]});
-    S.rooms.forEach(r=>{delete S.v[r.id+'.done']});
-    delete S.v.rdv;delete S.v.date;delete S.v.heure;
+  if(!isObj(j)){msg('Fichier invalide : ce n’est pas un EDL exporté par cette app');return}
+  const rooms=Array.isArray(j.rooms)&&j.rooms.length?j.rooms:S.rooms;
+  const cp=Array.isArray(j.cp)&&j.cp.length?j.cp:S.cp;
+  const iv=Array.isArray(j.iv)?j.iv:[];
+  const an=Array.isArray(j.an)&&j.an.length?j.an:S.an;
+  const kl=Array.isArray(j.kl)&&j.kl.length?j.kl:S.kl;
+  const v=isObj(j.v)?j.v:{};
+  const x=isObj(j.x)?j.x:{};
+  const san=isObj(j.san)?j.san:{};
+  const ph=isObj(j.ph)?j.ph:{};
+  try{
+    const newBaseline=toSortie?clone({v,rooms,x,san}):(isObj(j.baseline)?clone(j.baseline):null);
+    S.v=v;S.rooms=rooms;S.cp=cp;S.x=x;S.iv=iv;S.san=san;S.an=an;S.kl=kl;S.ph=ph;
+    S.baseline=newBaseline;
+    if(toSortie){
+      S.v.sensS=true;delete S.v.sensE;
+      if(S.v.ent)S.v.sor=S.v.ent;if(S.v.entem)S.v.sorem=S.v.entem;if(S.v.entte)S.v.sorte=S.v.entte;
+      delete S.v.ent;delete S.v.entem;delete S.v.entte;
+      S.ph={};
+      SIG.forEach(([k])=>{delete S.v[k]});
+      S.rooms.forEach(r=>{delete S.v[r.id+'.done']});
+      delete S.v.rdv;delete S.v.date;delete S.v.heure;
+    }
+    S.tab='gen';render();save();savePh();
+    msg(toSortie?'Repris pour la sortie — relis chaque pièce':'EDL rouvert');
+  }catch(e){
+    console.error(e);
+    msg('Import impossible — fichier illisible ou incompatible');
   }
-  S.tab='gen';render();save();savePh();
-  msg(toSortie?'Repris pour la sortie — relis chaque pièce':'EDL rouvert');
+}
+async function exportDecompte(){
+  const list=compareList().filter(x=>x.status==='deg'&&S.v[x.sk+'imp']);
+  if(!list.length){msg('Aucune dégradation imputable à exporter');return}
+  let total=0;
+  const rows=list.map(x=>{const c=parseFloat(S.v[x.sk+'cout'])||0;total+=c;
+    return `<tr><td>${esc(x.roomLabel)}</td><td>${esc(x.name)}</td><td>${esc(x.s1||'—')}</td><td>${esc(x.s2||'—')}</td><td>${esc(S.v[x.obsKey]||'')}</td><td style="text-align:right">${c.toFixed(2)} €</td></tr>`;
+  }).join('');
+  const h=`<div class="hdband"><span class="brand">DIAG-LOC</span><span class="sub">Décompte de retenue sur dépôt de garantie</span></div>
+    <table><tr><th>Bien</th><td>${esc(S.v.adr||'')}</td></tr><tr><th>Locataire sortant</th><td>${esc(S.v.sor||'')}</td></tr><tr><th>N° RDV</th><td>${esc(S.v.rdv||'')}</td></tr><tr><th>Date</th><td>${esc(S.v.date||'')}</td></tr></table>
+    <table><tr><th>Pièce</th><th>Élément</th><th>État entrée</th><th>État sortie</th><th>Observations</th><th>Coût</th></tr>${rows}</table>
+    <h2>Total retenu : ${total.toFixed(2).replace('.',',')} €</h2>`;
+  const name=(S.v.rdv?S.v.rdv+' ':'')+'Décompte.html';
+  const doc='<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Décompte — DIAG-LOC</title><style>body{font:14px/1.4 system-ui,sans-serif;margin:20px;color:#17252d;max-width:900px}table{border-collapse:separate;border-spacing:0 6px;width:100%;margin:6px 0 16px;font-size:13px}td,th{border:1px solid #e2e6e8;padding:7px 9px;text-align:left;vertical-align:top}th{background:#eef3f5;font-weight:600}.hdband{background:#0e6d8c;color:#fff;border-radius:12px;padding:18px 22px;margin-bottom:14px}.hdband .brand{font-weight:800;font-size:22px;letter-spacing:.06em;display:block}.hdband .sub{font-size:13px;opacity:.9}</style><body>'+h;
+  try{const d=window.claude&&await claude.use('downloads');if(d){await d.save({filename:name,data:doc});return}}catch(e){if(e&&e.code==='declined')return}
+  const blob=new Blob([doc],{type:'text/html'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();
 }
 $('#imp').onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
