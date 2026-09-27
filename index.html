@@ -292,6 +292,36 @@ function compareList(){
     if(r.t==='sdb'){SN.forEach((n,i)=>{const k='sn'+r.id+'.'+i+'.';add(r.n,n,k+'s',k+'b')});(S.san[r.id]||[]).forEach(eid=>{const k='sn'+r.id+'.x'+eid+'.';add(r.n,'Lavabo',k+'s',k+'b')})}
     if(r.t==='wc'){const kg='wcg'+r.id+'.';WCF.forEach((c,j)=>add(r.n,c,kg+j,null));const ks='wcs'+r.id+'.';add(r.n,'Lave-main',ks+'s',ks+'b')}
   });
+  const bIv=S.baseline.iv||[];
+  S.iv.forEach(cur=>{
+    const base=bIv.find(b=>b.id===cur.id);if(!base)return;
+    const k='iv'+cur.id,ks=k+'s',kn=k+'n';
+    const n1=parseInt(bv[kn])||0,n2=parseInt(S.v[kn])||0,s1=bv[ks],s2=S.v[ks];
+    let status='same';
+    if(n2<n1)status='deg';
+    else if(s1!==s2){
+      if(SEV[s1]!==undefined&&SEV[s2]!==undefined)status=SEV[s2]>SEV[s1]?'deg':(SEV[s2]<SEV[s1]?'better':'same');
+      else status='diff';
+    }
+    if(status==='same')return;
+    const detail=[];if(n2!==n1)detail.push('Nb '+n1+' → '+n2);if(s1!==s2)detail.push('État '+(s1||'—')+' → '+(s2||'—'));
+    const label=S.v[k+'d']||bv[k+'d']||'Objet';
+    out.push({roomLabel:'Inventaire',name:label+(detail.length?' — '+detail.join(', '):''),sk:k+'.qtydeg',obsKey:k+'b',s1:String(n1),s2:String(n2),status});
+  });
+  const bKl=S.baseline.kl||[];
+  S.kl.forEach(cur=>{
+    const base=bKl.find(b=>b.id===cur.id);if(!base)return;
+    const k='kl'+cur.id+'.',q1=parseInt(bv[k+'q'])||0,q2=parseInt(S.v[k+'q'])||0;
+    if(q2<q1)out.push({roomLabel:'Clés',name:(cur.n||'Clé')+' — quantité '+q1+' → '+q2,sk:k+'qtydeg',obsKey:null,s1:String(q1),s2:String(q2),status:'deg'});
+    const s1=bv[k+'s'],s2=S.v[k+'s'];
+    if(s1!==s2&&(SEV[s1]!==undefined||SEV[s2]!==undefined)){
+      const st=SEV[s1]!==undefined&&SEV[s2]!==undefined?(SEV[s2]>SEV[s1]?'deg':(SEV[s2]<SEV[s1]?'better':'same')):'diff';
+      if(st!=='same')out.push({roomLabel:'Clés',name:(cur.n||'Clé')+' — état',sk:k+'s',obsKey:null,s1,s2,status:st});
+    }
+  });
+  if(S.v.net==='Moyen'||S.v.net==='Médiocre'){
+    out.push({roomLabel:'Nettoyage général',name:'État du nettoyage à la sortie',sk:'netg_flag',obsKey:'netgb',s1:'—',s2:S.v.net,status:'deg'});
+  }
   return out;
 }
 function tabs(){
@@ -428,7 +458,7 @@ document.addEventListener('change',async e=>{
   if(t.id==='cmpFile'){const f=t.files[0];if(!f)return;
     try{const j=JSON.parse(await f.text());
       if(!isObj(j))throw new Error('bad shape');
-      S.baseline=clone({v:isObj(j.v)?j.v:{},rooms:Array.isArray(j.rooms)&&j.rooms.length?j.rooms:S.rooms,x:isObj(j.x)?j.x:{},san:isObj(j.san)?j.san:{}});
+      S.baseline=clone({v:isObj(j.v)?j.v:{},rooms:Array.isArray(j.rooms)&&j.rooms.length?j.rooms:S.rooms,x:isObj(j.x)?j.x:{},san:isObj(j.san)?j.san:{},iv:Array.isArray(j.iv)?j.iv:[],kl:Array.isArray(j.kl)&&j.kl.length?j.kl:S.kl});
       render();save();msg('Référence chargée');
     }catch(x){msg('Fichier invalide ou illisible')}
     t.value='';return}
@@ -540,7 +570,7 @@ function applyImport(j,toSortie){
   const san=isObj(j.san)?j.san:{};
   const ph=isObj(j.ph)?j.ph:{};
   try{
-    const newBaseline=toSortie?clone({v,rooms,x,san}):(isObj(j.baseline)?clone(j.baseline):null);
+    const newBaseline=toSortie?clone({v,rooms,x,san,iv,kl}):(isObj(j.baseline)?clone(j.baseline):null);
     S.v=v;S.rooms=rooms;S.cp=cp;S.x=x;S.iv=iv;S.san=san;S.an=an;S.kl=kl;S.ph=ph;
     S.baseline=newBaseline;
     if(toSortie){
