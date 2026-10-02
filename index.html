@@ -130,8 +130,8 @@ const CHAUF=['Radiateur','Convecteur','Climatisation','Télécommande'];
 const SERR=['Serrure / verrou',['Serrure','Verrou','Loquet'],null,null,null,{when:'Serrure',label:'Nombre de clés'}];
 const VOLM=['Bois peint','Bois verni','Alu','PVC'];
 const BASE=[['Porte d’accès',DMAT],SERR,['Sol',SOL],['Plinthes',PLI],['Murs',MUR],['Plafond',MUR],
-  ['Chauffage',CHAUF,['Nb'],null,1],['Ouvertures',['Simple vitrage','Double vitrage','Baie coulissante'],['Fen.','P.fen.'],null,1],
-  ['Volets',['Roulant','Battant','Pliant','Coulissant'],['Nb'],null,1,null,VOLM],['Placards',null,['Portes','Rayons','Tiroirs'],null,1],PRI,ECL];
+  ['Chauffage',CHAUF,['Nb'],null,1],['Ouvertures',['Simple vitrage','Double vitrage'],['Fen.','P.fen.','Baie coulissante'],null,1,null,VOLM],
+  ['Volets',['Roulant','Roulant électrique','Battant','Pliant','Coulissant'],['Nb'],null,1,null,VOLM],['Placards',null,['Portes','Rayons','Tiroirs'],null,1],PRI,ECL];
 const SDB_BASE=BASE.map(x=>x[0]==='Chauffage'?['Chauffage',[...CHAUF,'Sèche-serviette'],['Nb'],null,1]:x);
 const WCF=['Réservoir','Cuvette','Abattant','Robinet de chasse'];
 const TPL={
@@ -164,7 +164,7 @@ const uid=()=>'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const clone=o=>JSON.parse(JSON.stringify(o));
 let cmpShowAll=false;
 
-function fresh(){return {v:{sgXn:'ARMANA Frédéric'},rooms:[{id:'r1',n:'Entrée',t:'entree'},{id:'r2',n:'Cuisine',t:'cuisine'},{id:'r3',n:'Séjour',t:'base'},{id:'r4',n:'Chambre 1',t:'base'},{id:'r5',n:'Chambre 2',t:'base'},{id:'r6',n:'Salle de bain',t:'sdb'},{id:'r7',n:'WC',t:'wc'}],
+function fresh(){return {v:{sgXn:'ARMANA Frédéric',sgXadr:'485, chemin Thomas Garbies 06610 La Gaude'},rooms:[{id:'r1',n:'Entrée',t:'entree'},{id:'r2',n:'Cuisine',t:'cuisine'},{id:'r3',n:'Séjour',t:'base'},{id:'r4',n:'Chambre 1',t:'base'},{id:'r5',n:'Chambre 2',t:'base'},{id:'r6',n:'Salle de bain',t:'sdb'},{id:'r7',n:'WC',t:'wc'}],
  ph:{},tab:'gen',cp:[{id:'c1',t:'Eau',orig:1},{id:'c2',t:'Électricité',orig:1},{id:'c3',t:'Gaz',orig:1}],x:{},iv:[],san:{},
  an:ANN0.map((n,i)=>({id:'a'+i,n,orig:1})),kl:KEYS0.map((n,i)=>({id:'k'+i,n,orig:1})),baseline:null}}
 let S=fresh();
@@ -358,8 +358,8 @@ function renderCore(){
     h+=contactsBlock();
   }
   else if(T==='cpt')h=`<h2>Relevés et équipements</h2>${meters()}${groups(CPT)}${photoBlock('cpt')}`;
-  else if(T==='ann')h=`<h2>Annexes</h2>${dynList(S.an,'an',(k,o)=>`<div class="g">${['Cave','Garage','Grenier'].includes(o.n)?`<label class="f">N°<input data-k="${k}num" value="${esc(S.v[k+'num']||'')}"></label>`:''}<label class="f">Porte${sel(k+'p',SS)}</label><label class="f">Serrure${sel(k+'s',SS)}</label><label class="f">Vide ou m³ à vider<input data-k="${k}m" value="${esc(S.v[k+'m']||'')}"></label></div>${ob(k)}`)}`;
-  else if(T==='cles')h=`<h2>Clés remises</h2>${dynList(S.kl,'kl',(k,o)=>`<div class="g"><label class="f">Quantité<input type="number" min="0" inputmode="numeric" data-k="${k}q" value="${esc(S.v[k+'q']||'')}"></label>${['Émetteur','Clé magnétique'].includes(o.n)?`<label class="f">État${sel(k+'s',SS)}</label>`:''}</div>`)}<p><b>Total clés : <span id="tot">${total()}</span></b></p><h3>Observations</h3>${ob('clesg')}`;
+  else if(T==='ann')h=`<h2>Annexes</h2>${dynList(S.an,'an',(k,o)=>`<div class="g">${['Cave','Garage','Grenier'].includes(o.n)?`<label class="f">N°<input data-k="${k}num" value="${esc(S.v[k+'num']||'')}"></label>`:''}<label class="f">Porte${sel(k+'p',SS)}</label><label class="f">Serrure${sel(k+'s',SS)}</label><label class="f">Vide ou m³ à vider<input data-k="${k}m" value="${esc(S.v[k+'m']||'')}"></label></div>${ob(k)}`)}${photoBlock('ann')}`;
+  else if(T==='cles')h=`<h2>Clés remises</h2>${dynList(S.kl,'kl',(k,o)=>`<div class="g"><label class="f">Quantité<input type="number" min="0" inputmode="numeric" data-k="${k}q" value="${esc(S.v[k+'q']||'')}"></label>${['Émetteur','Clé magnétique'].includes(o.n)?`<label class="f">État${sel(k+'s',SS)}</label>`:''}</div>`)}<p><b>Total clés : <span id="tot">${total()}</span></b></p><h3>Observations</h3>${ob('clesg')}${photoBlock('cles')}`;
   else if(T==='net')h=`<h2>Nettoyage général</h2><div class="row">${['Bon','Moyen','Médiocre'].map(o=>chip('net',o,o)).join('')}</div>${ob('netg')}`;
   else if(T==='cmp'){
     const list=compareList();
@@ -390,7 +390,8 @@ function renderCore(){
   else if(T==='sig'){
     const sO=S.v.sensS&&!S.v.sensE,eO=S.v.sensE&&!S.v.sensS;
     const blk=([k,l,d])=>{const locked=!!S.v[k+'lock'];
-      return `<h3>${l}</h3><label class="f">Nom<input data-k="${k}n" value="${esc(nm(k,d))}"></label><canvas class="sg${locked?' locked':''}" data-k="${k}"${locked?' style="pointer-events:none"':''}></canvas><div class="act">${locked?`<span class="lg">✓ Signature validée</span><button class="btn sm" data-act="unlock" data-k="${k}">Modifier</button>`:`<button class="btn sm" data-act="clr" data-k="${k}">Effacer</button><button class="btn p sm" data-act="lock" data-k="${k}">Valider la signature</button>`}</div>`;
+      const adrFld=k==='sgX'?`<label class="f">Adresse postale<input data-k="${k}adr" value="${esc(S.v[k+'adr']||'485, chemin Thomas Garbies 06610 La Gaude')}"></label>`:'';
+      return `<h3>${l}</h3><label class="f">Nom<input data-k="${k}n" value="${esc(nm(k,d))}"></label>${adrFld}<canvas class="sg${locked?' locked':''}" data-k="${k}"${locked?' style="pointer-events:none"':''}></canvas><div class="act">${locked?`<span class="lg">✓ Signature validée</span><button class="btn sm" data-act="unlock" data-k="${k}">Modifier</button>`:`<button class="btn sm" data-act="clr" data-k="${k}">Effacer</button><button class="btn p sm" data-act="lock" data-k="${k}">Valider la signature</button>`}</div>`;
     };
     h=`<h2>Signatures</h2>${eO?'':blk(SIG[0])}<div class="g">${fld(['dent','Date d’entrée dans le logement','date'])}</div><label class="f">Commentaire du locataire<textarea rows="4" data-k="com">${esc(S.v.com||'')}</textarea></label>${sO?'':blk(SIG[1])}${blk(SIG[2])}${blk(SIG[3])}`;
   }
@@ -518,11 +519,14 @@ function recap(){
   S.rooms.forEach(r=>{const ex=S.x[r.id]||[];
     h+=`<h2>${esc(r.n)}</h2><table>${th}${r.t==='wc'?wcr(r.id)+lavR(r.id):''}${TPL[r.t].i.map((x,i)=>line(r.id,'t'+i,x)+ex.filter(e=>e.base===x[0]).map(e=>line(r.id,e.id,[e.n,e.o,e.c,e.k])).join('')).join('')}${ex.filter(e=>!e.base).map(e=>line(r.id,e.id,[e.n,e.o,e.c,e.k])).join('')}</table>${r.t==='sdb'?`<table>${snr(r.id)}</table>`:''}${(S.ph[r.id]||[]).map(d=>`<img src="${d}">`).join('')}`});
   if(S.iv.length)h+=`<h2>Inventaire du mobilier</h2><p>Entrée : ${esc(S.v.ive||'')} — Sortie : ${esc(S.v.ivs||'')}</p><table><tr><th>Pièce</th><th>Description</th><th>Nbre</th><th>État</th><th>Aspect</th><th>Observations</th><th>1</th><th>2</th></tr>${S.iv.map(r=>{const k='iv'+r.id;tick(S.v[k+'s']);if(S.v[k+'1'])cnt.r1++;if(S.v[k+'2'])cnt.r2++;return `<tr style="background:${STCLR[S.v[k+'s']]||''}">${['p','d','n','s','a','b'].map(x=>`<td>${esc(S.v[k+x]||'')}</td>`).join('')}<td>${S.v[k+'1']?'×':''}</td><td>${S.v[k+'2']?'×':''}</td></tr>`}).join('')}</table>${S.iv.map(r=>(S.ph['iv'+r.id]||[]).map(d=>`<img src="${d}">`).join('')).join('')}${(S.ph.inv||[]).map(d=>`<img src="${d}">`).join('')}`;
-  h+=`<h2>Annexes</h2><table>${S.an.map(o=>{const k='an'+o.id+'.';return row(o.n+(S.v[k+'num']?' n° '+S.v[k+'num']:''),[S.v[k+'p']&&'porte '+S.v[k+'p'],S.v[k+'s']&&'serrure '+S.v[k+'s'],S.v[k+'m']&&'à vider '+S.v[k+'m'],S.v[k+'b']].filter(Boolean).join(' · '))}).join('')}</table>`;
-  h+=`<h2>Clés</h2><table>${S.kl.map(o=>{const k='kl'+o.id+'.';return row(o.n||'Clé',[S.v[k+'q']&&('qté '+S.v[k+'q']),S.v[k+'s']].filter(Boolean).join(' · '))}).join('')}${row('Total',String(total()))}${row('Observations',S.v.clesgb)}</table>`;
+  h+=`<h2>Annexes</h2><table>${S.an.map(o=>{const k='an'+o.id+'.';return row(o.n+(S.v[k+'num']?' n° '+S.v[k+'num']:''),[S.v[k+'p']&&'porte '+S.v[k+'p'],S.v[k+'s']&&'serrure '+S.v[k+'s'],S.v[k+'m']&&'à vider '+S.v[k+'m'],S.v[k+'b']].filter(Boolean).join(' · '))}).join('')}</table>${(S.ph.ann||[]).map(d=>`<img src="${d}">`).join('')}`;
+  h+=`<h2>Clés</h2><table>${S.kl.map(o=>{const k='kl'+o.id+'.';return row(o.n||'Clé',[S.v[k+'q']&&('qté '+S.v[k+'q']),S.v[k+'s']].filter(Boolean).join(' · '))}).join('')}${row('Total',String(total()))}${row('Observations',S.v.clesgb)}</table>${(S.ph.cles||[]).map(d=>`<img src="${d}">`).join('')}`;
   if(isSortant())h+=`<h2>Nettoyage général</h2><table>${row('État',S.v.net)}${row('Observations',S.v.netgb)}</table>`;
   h+=`<h2>Signatures</h2><table>${row('Date d’entrée',S.v.dent)}${row('Commentaire du locataire',S.v.com)}</table>`;
-  SIG.forEach(([k,l,d])=>{if(S.v[k]||nm(k,d))h+=`<p>${esc(l)} ${esc(nm(k,d))}<br>${S.v[k]?`<img src="${S.v[k]}" style="max-width:260px;border:1px solid #999">`:''}</p>`});
+  SIG.forEach(([k,l,d])=>{if(S.v[k]||nm(k,d))h+=`<p>${esc(l)} ${esc(nm(k,d))}${k==='sgX'?'<br>'+esc(S.v.sgXadr||'485, chemin Thomas Garbies 06610 La Gaude'):''}<br>${S.v[k]?`<img src="${S.v[k]}" style="max-width:260px;border:1px solid #999">`:''}</p>`});
+  h+=`<h2>Légende</h2><p style="font-size:13px;color:#5d6d76">États : NV non vérifié · NF neuf · BE bon état · EU état d’usage · ME mauvais état · HS hors service<br>
+    TrCh : Trous de Chevilles<br>TDH : Traces D’Habitation<br>TDHP : Traces D’Habitation Prononcées<br>DDE : Dégât Des Eaux<br>
+    1 = à réparer ou changer · 2 = à nettoyer</p>`;
   const sum=Object.keys(STL).map(k=>cnt[k]?`<span class="sc" style="background:${STCLR[k]}">${cnt[k]} ${STL[k]}</span>`:'').join('')
     +(cnt.r1?`<span class="sc" style="background:${STCLR.ME}">${cnt.r1} à réparer</span>`:'')
     +(cnt.r2?`<span class="sc" style="background:${STCLR.NV}">${cnt.r2} à nettoyer</span>`:'');
