@@ -270,6 +270,32 @@ function tabFilled(id){
   if(S.rooms.some(x=>x.id===id))return !!S.v[id+'.done'];
   return Object.keys(S.v).some(k=>k.indexOf(id+'.')===0&&S.v[k])||!!(S.ph[id]&&S.ph[id].length);
 }
+function idBlock(){
+  if(!S.baseline)return '';
+  const bv=S.baseline.v||{};
+  const fmtDate=d=>{if(!d)return '—';const dt=new Date(d);return isNaN(dt)?'—':dt.toLocaleDateString('fr-FR')};
+  const dEntree=S.v.dent,dSortie=S.v.date;
+  let duree='—';
+  const a=new Date(dEntree),b=new Date(dSortie);
+  if(dEntree&&dSortie&&!isNaN(a)&&!isNaN(b)&&b>=a){
+    let y=b.getFullYear()-a.getFullYear(),m=b.getMonth()-a.getMonth(),d=b.getDate()-a.getDate();
+    if(d<0){m--;d+=new Date(b.getFullYear(),b.getMonth(),0).getDate();}
+    if(m<0){y--;m+=12;}
+    const parts=[];if(y)parts.push(y+' an'+(y>1?'s':''));if(m)parts.push(m+' mois');if(d||!parts.length)parts.push(d+' jour'+(d>1?'s':''));
+    duree=parts.join(', ');
+  }
+  const row=(l,v)=>`<div class="f"><span>${esc(l)}</span><div style="color:var(--ink);font-size:15px">${esc(v||'—')}</div></div>`;
+  const stat=(l,v)=>`<div style="background:#eaf6ee;border-radius:10px;padding:8px 12px;text-align:center;flex:1;min-width:110px"><div style="font-size:11px;color:#5d6d76">${esc(l)}</div><div style="font-weight:700;font-size:15px">${esc(v)}</div></div>`;
+  return `<div class="it"><div class="g">
+      ${row('Client',S.v.client)}${row('E-mail client',S.v.cliente)}${row('Téléphone client',S.v.clientte)}
+      ${row('N° RDV entrée',bv.rdv)}${row('N° RDV sortie',S.v.rdv)}
+      ${row('Adresse du logement',S.v.adr)}${row('Type de logement',S.v.typ)}${row('Vide ou meublé',S.v.meub)}
+      ${row('Locataire',S.v.sor)}${row('Nouvelle adresse',S.v.nadr)}
+    </div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 16px">
+      ${stat('Date d’entrée',fmtDate(dEntree))}${stat('Date de sortie',fmtDate(dSortie))}${stat('Durée d’occupation',duree)}
+    </div>`;
+}
 function compareList(){
   if(!S.baseline)return [];
   const bv=S.baseline.v||{};
@@ -380,6 +406,7 @@ function renderCore(){
       return `<div class="it"><div class="hd"><b>${esc(x.roomLabel)} — ${esc(x.name)}</b><span class="badge ${x.status}">${lab}</span>${flagBadges}</div><div class="g"><label class="f">Entrée<input disabled value="${esc(x.s1||'—')}"></label><label class="f">Sortie<input disabled value="${esc(x.s2||'—')}"></label></div>${extra}${obs}</div>`;
     }).join('');
     h=`<h2>Comparatif entrée / sortie</h2>
+    ${idBlock()}
     <div class="sum"><span class="sc" style="background:#fbe4e6">${counts.deg} dégradé(s)</span><span class="sc" style="background:#e8f5ec">${counts.better} amélioré(s)/nettoyé(s)</span><span class="sc" style="background:#eef1f2">${counts.same+counts.diff} identique(s)</span></div>
     <div class="act"><button class="btn sm" data-act="cmpToggle">${cmpShowAll?'Afficher seulement les écarts':'Afficher tout'}</button><label class="btn sm">Comparer avec un autre fichier<input type="file" accept="application/json" hidden id="cmpFile"></label><button class="btn d sm" data-act="cmpClear">Effacer la référence</button></div>
     ${rows||'<p class="lg">Aucun écart à afficher.</p>'}
@@ -595,6 +622,7 @@ function applyImport(j,toSortie){
       S.ph={};
       SIG.forEach(([k])=>{delete S.v[k]});
       S.rooms.forEach(r=>{delete S.v[r.id+'.done']});
+      if(!S.v.dent&&S.v.date)S.v.dent=S.v.date;
       delete S.v.rdv;delete S.v.date;delete S.v.heure;
     }
     S.tab='gen';render();save();savePh();
