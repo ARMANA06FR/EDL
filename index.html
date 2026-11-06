@@ -75,9 +75,9 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 .hd .hd-nb{flex:none}
 .hd .hd-nb input{width:56px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:13px;background:var(--card);color:var(--ink)}
 .hd-actions{display:flex;align-items:center;gap:4px;flex:none;margin-left:auto}
-.tc-btn{display:inline-flex;align-items:center;justify-content:center;padding:0 8px;min-height:40px;min-width:56px}
-.tc-btn input{width:48px;border:0;background:transparent;text-align:center;font:inherit;font-size:14px;font-weight:500;color:inherit;padding:0;outline:none}
-.tc-btn input::placeholder{color:var(--mut);opacity:.8}
+.tc-btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;min-height:40px;box-sizing:border-box}
+.tc-btn input{width:2.6em;max-width:3em;border:0;background:transparent;text-align:center;font:inherit;font-size:14px;font-weight:500;color:inherit;padding:0;margin:0;outline:none;line-height:1}
+.tc-btn input::placeholder{color:var(--mut);opacity:.85}
 .hd select{width:auto;max-width:50%;padding:5px}
 .selwrap{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px}
 .selwrap select{width:auto;min-width:120px;padding:5px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:14px;background:var(--card);color:var(--ink)}
@@ -166,7 +166,7 @@ const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"
 const ST=[['NV','Non vérifié','--nv'],['NF','Neuf','--nf'],['BE','Bon état','--be'],['EU','État d’usage','--eu'],['ME','Mauvais état','--me'],['HS','Hors service','--hs']];
 const SOL=['Carrelage','Marbre','Parquet','Parquet flottant','Pierre naturelle','Lino/PVC','Béton'],PLI=['Carrelage','Marbre','Bois peint','Bois verni','PVC','Goulottes'],MUR=['Crépi','Peint','Papier peint','Toile de verre','Parpaings'],PLAF=['Crépi','Peint','Papier peint','Toile de verre','Dalles polystyrène'],VMC=['VMC','Autogyre','VH','VB','VH + VB'];
 const DMAT=['Bois peint','Bois verni','Verre','Alu','Alu + verre','Métal','Autre'],CRED=['Faïence','Stratifié','Verre','Inox','Autre'],REV=['Émail','Céramique','Pierre naturelle','Composite','Verre','Béton','Autre'];
-const PRI=['Prises',null,['PC','Tel','TV','Prise fibre']],ECL=['Éclairage',null,['Plafonnier','Applique','Amp. EU','Amp. HS/abs','Néon','Néon HS/abs.','Fils nus']];
+const PRI=['Prises',null,['PC','Tel','TV','Fibre']],ECL=['Éclairage',null,['Plafonnier','Applique','Amp. EU','Amp. HS/abs','Néon','Néon HS/abs.','Fils nus']];
 const NOTRCH=new Set(['Interphone / visiophone','Serrure','Judas','Chauffage','Sonnette','Prises','Éclairage','Ventilation','Robinets','Siphon','Mélangeur','Joint silicone','Évier','Miroir','Pare-douche','Porte-douchette','Porte-serviette','Lave-main']);
 const CHAUF=['Radiateur','Convecteur','Climatisation','Télécommande','Thermostat'];
 const SERR=['Serrure / verrou',['Serrure','Verrou','Loquet'],null,null,null,{when:'Serrure',label:'Nombre de clés'}];
@@ -181,8 +181,8 @@ const TPL={
  chambre:{l:'Chambre',i:BASE},
  entree:{l:'Entrée',i:[['Porte palière',DMAT],['Serrure'],['Verrou',['Verrou haut','Verrou bas'],null,null,1],['Sonnette'],['Judas'],['Interphone / visiophone',['Interphone','Visiophone']],...BASE.filter(x=>x[0]!=='Porte d’accès'&&x!==SERR)]},
  cuisine:{l:'Cuisine',i:[...BASE,['Évier',['Grès','Inox','Résine','Pierre naturelle','Verre']],['Joint silicone'],['Mélangeur'],['Siphon'],['Placard sous évier',null,['Portes','Rayons','Tiroirs'],null,1],['Plan de travail'],['Robinets',null,null,['Gaz','MàL']],['Crédence',CRED],['Ventilation',VMC,null,null,1]]},
- sdb:{l:'Salle de bain',i:[...SDB_BASE,['Placard sous lavabo',null,['Portes','Rayons','Tiroirs'],null,1],['Miroir',null,['Nombre'],null,1],['Pare-douche'],['Porte-douchette'],['Porte-serviette'],['Faïence'],['Ventilation',VMC,null,null,1]]},
- wc:{l:'WC',i:[['Porte d’accès',DMAT],SERR,['Sol',SOL],['Murs',MUR],['Plafond',PLAF],PRI,ECL,['Ventilation',VMC,null,null,1],['Faïence'],['Miroir',null,['Nombre'],null,1],['Placard',null,['Portes','Rayons','Tiroirs'],null,1],['Placard sous lavabo',null,['Portes','Rayons','Tiroirs'],null,1],['Porte papier']]},
+ sdb:{l:'Salle de bain',i:[...SDB_BASE,['Placard sous lavabo',null,['Portes','Rayons','Tiroirs'],null,1],['Miroir',null,['Nb'],null,1],['Pare-douche'],['Porte-douchette'],['Porte-serviette'],['Faïence'],['Ventilation',VMC,null,null,1]]},
+ wc:{l:'WC',i:[['Porte d’accès',DMAT],SERR,['Sol',SOL],['Murs',MUR],['Plafond',PLAF],PRI,ECL,['Ventilation',VMC,null,null,1],['Faïence'],['Miroir',null,['Nb'],null,1],['Placard',null,['Portes','Rayons','Tiroirs'],null,1],['Placard sous lavabo',null,['Portes','Rayons','Tiroirs'],null,1],['Porte papier']]},
  balcon:{l:'Balcon',i:[['Sol',SOL],['Plinthe',PLI],['Façade',MUR],['Plafond',PLAF],['Placard',null,['Portes','Rayons','Tiroirs'],null,1],PRI,ECL,['Garde-corps'],['Prélat'],['Store banne']]},
  garage:{l:'Garage',i:[['Porte d’accès',DMAT],SERR,['Porte de garage'],['Sol',SOL],['Murs',MUR],['Plafond',PLAF],['Ouvertures',null,null,null,1],['Placards',null,['Portes','Rayons','Tiroirs'],null,1],PRI,ECL]},
  cave:{l:'Cave',i:[['Porte d’accès',DMAT],SERR,['Sol',SOL],['Murs',MUR],['Plafond',PLAF],['Ouvertures',null,null,null,1],PRI,ECL]},
@@ -1065,9 +1065,12 @@ function item(p,key,def,flags=true,dupBase){
   const warn=partial&&!S.v[k+'s'];
   const filled=!!S.v[k+'s'];
   const displayName=S.v[k+'nm']||name;
-  const nbFields=cn?cn.map((c,j)=>`<span class="hd-nb"><input type="number" min="0" inputmode="numeric" placeholder="${esc(c)}" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></span>`).join(''):'';
+  const cnOnTitle=cn&&cn.length===1&&/^(Nb|Nombre)$/i.test(cn[0]);
+  const nbFields=cnOnTitle?cn.map((c,j)=>`<span class="hd-nb"><input type="number" min="0" inputmode="numeric" placeholder="Nb" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></span>`).join(''):'';
+  const cnRow=cn&&!cnOnTitle?`<div class="g cn">${cn.map((c,j)=>`<label class="f">${esc(c)}<input type="number" min="0" inputmode="numeric" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></label>`).join('')}</div>`:'';
   const trchBtn=(!noetat&&!notrch)?`<span class="c tc-btn"><input type="number" min="0" inputmode="numeric" placeholder="TrCh" data-k="${k}t" value="${esc(S.v[k+'t']||'')}"></span>`:'';
   return `<div class="it${warn?' warn':filled?' filled':''}"><div class="hd"><input class="it-title" data-iname="${esc(p)}" data-ikey="${esc(key)}" value="${esc(displayName)}">${nbFields}<span class="hd-actions"><button class="mini" data-act="dup" data-r="${p}" data-b="${esc(dupBase??name)}" data-i="${esc(key)}" title="Ajouter une ligne ${esc(displayName)} juste en dessous">+</button>${removable?`<button class="mini d" data-act="delx" data-r="${p}" data-id="${esc(key)}" title="Retirer cette ligne">×</button>`:''}</span></div>
+  ${cnRow}
   ${(opts||opts2)?`<div class="row sel-row">${opts?sel(k+'o',opts):''}${opts2?sel(k+'o2',opts2):''}</div>`:''}
   ${chk?`<div class="row">${chk.map((c,j)=>`<button class="c${S.v[k+'x'+j]?' on':''}" data-k="${k}x${j}" data-t="1">${esc(c)}</button>`).join('')}</div>`:''}
   ${cond&&S.v[k+'o']===cond.when?`<div class="g cn"><label class="f">${cond.label}<input type="number" min="0" inputmode="numeric" data-k="${k}cc" value="${esc(S.v[k+'cc']||'')}"></label></div>`:''}
@@ -1122,7 +1125,7 @@ function dynList(arr,tag,extra,ph){
 }
 function tabDone(id){
   if(S.rooms.some(x=>x.id===id))return !!S.v[id+'.done'];
-  if(['cpt','equi','inv','ann','cles','net','sig'].includes(id))return !!S.v[id+'.done'];
+  if(['gen','cpt','equi','inv','ann','cles','net','sig'].includes(id))return !!S.v[id+'.done'];
   return false;
 }
 function tabStarted(id){
@@ -1286,6 +1289,7 @@ function renderCore(){
     if(!sO)h+=`<h3 class="strong">Locataire entrant</h3><div class="g">${[['ent','Nom'],['entem','E-mail'],['entte','Téléphone']].map(fld).join('')}</div>`;
     if(!eO)h+=`<h3 class="strong">Locataire sortant</h3><div class="g">${[['sor','Nom'],['sorem','E-mail'],['sorte','Téléphone'],['nadr','Nouvelle adresse'],['ncp','Code postal'],['nville','Ville']].map(fld).join('')}</div>`;
     h+=contactsBlock();
+    h+=`<div class="act"><button class="btn ${S.v['gen.done']?'p':''} sm" data-act="donebtn" data-r="gen">${S.v['gen.done']?'✓ Page terminée':'Marquer la page comme terminée'}</button></div>`;
   }
   else if(T==='cpt')h=`<h2>Compteurs</h2>${meters()}${photoBlock('cpt')}<div class="act"><button class="btn ${S.v['cpt.done']?'p':''} sm" data-act="donebtn" data-r="cpt">${S.v['cpt.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
   else if(T==='equi')h=renderEqui();
