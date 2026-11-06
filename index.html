@@ -61,12 +61,13 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 .mini.d{border-color:var(--hs);color:var(--hs)}
 .tb .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--be);margin-left:5px;vertical-align:middle}
 .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
-.hd b{flex:1}
+.hd b,.it-title{flex:1;font-weight:600;font-size:inherit;color:inherit}
+.it-title{border:0;background:none;padding:2px;min-width:0;outline:none;width:100%}
+.it-title:focus{outline:1px solid var(--acc);border-radius:4px}
 .hd select{width:auto;max-width:50%;padding:5px}
-.selwrap{display:flex;flex-direction:column;gap:4px}
-.hd .selwrap{max-width:55%}
-.selwrap select{width:100%;padding:5px}
-.selother{width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:14px;background:var(--card);color:var(--ink)}
+.sel-combo{width:auto;max-width:55%;padding:5px 8px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:14px;background:var(--card);color:var(--ink);min-width:100px}
+.hd .sel-combo{max-width:50%}
+.f .sel-combo{max-width:100%;width:100%}
 .mini{border:1px solid var(--line);background:none;color:var(--mut);border-radius:7px;width:26px;height:26px;font:inherit;font-size:15px;line-height:1;flex:none}
 .row{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 .c{border:1px solid var(--line);background:none;color:var(--ink);border-radius:8px;padding:8px 12px;min-height:40px;font:inherit;font-size:14px;font-weight:500}
@@ -148,7 +149,7 @@ const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"
 const ST=[['NV','Non vérifié','--nv'],['NF','Neuf','--nf'],['BE','Bon état','--be'],['EU','État d’usage','--eu'],['ME','Mauvais état','--me'],['HS','Hors service','--hs']];
 const SOL=['Carrelage','Marbre','Parquet','Parquet flottant','Pierre naturelle','Lino/PVC','Béton'],PLI=['Carrelage','Marbre','Bois peint','Bois verni','PVC','Goulottes'],MUR=['Crépi','Peint','Papier peint','Toile de verre','Parpaings'],PLAF=['Crépi','Peint','Papier peint','Toile de verre','Dalles polystyrène'],VMC=['VMC','Autogyre','VH','VB','VH + VB'];
 const DMAT=['Bois peint','Bois verni','Verre','Alu','Alu + verre','Métal','Autre'],CRED=['Faïence','Stratifié','Verre','Inox','Autre'],REV=['Émail','Céramique','Pierre naturelle','Composite','Verre','Béton','Autre'];
-const PRI=['Prises',null,['PC','Tel','TV','Prise fibre','Néon HS/abs.']],ECL=['Éclairage',null,['Plafonnier','Applique','Amp. EU','Amp. HS/abs','Néon','Fils nus']];
+const PRI=['Prises',null,['PC','Tel','TV','Prise fibre']],ECL=['Éclairage',null,['Plafonnier','Applique','Amp. EU','Amp. HS/abs','Néon','Néon HS/abs.','Fils nus']];
 const NOTRCH=new Set(['Interphone / visiophone','Serrure','Judas','Chauffage','Sonnette','Prises','Éclairage','Ventilation','Robinets','Siphon','Mélangeur','Joint silicone','Évier','Miroir','Pare-douche','Porte-douchette','Porte-serviette','Lave-main']);
 const CHAUF=['Radiateur','Convecteur','Climatisation','Télécommande','Thermostat'];
 const SERR=['Serrure / verrou',['Serrure','Verrou','Loquet'],null,null,null,{when:'Serrure',label:'Nombre de clés'}];
@@ -918,8 +919,8 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('service-worke
 
 const sel=(k,o)=>{
   const v=S.v[k]||'';
-  const inList=o.includes(v);
-  return `<div class="selwrap"><select data-k="${esc(k)}" data-sel="${esc(k)}"><option value="">—</option>${o.map(x=>`<option${v===x?' selected':''}>${esc(x)}</option>`).join('')}<option value="__other__"${!inList&&v?' selected':''}>Autre…</option></select><input class="selother" data-k="${esc(k)}" value="${!inList&&v?esc(v):''}" placeholder="Saisir…" style="display:${!inList&&v?'block':'none'}"></div>`;
+  const id='dl_'+k.replace(/[^a-zA-Z0-9]/g,'_');
+  return `<input list="${id}" data-k="${esc(k)}" value="${esc(v)}" placeholder="—" class="sel-combo"><datalist id="${id}">${o.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>`;
 };
 function fld([k,l,t]){
   if(k==='sousType'){
@@ -1046,8 +1047,9 @@ function item(p,key,def,flags=true,dupBase){
   const partial=S.v[k+'o']||S.v[k+'b']||(cn&&cn.some((c,j)=>S.v[k+'c'+j]))||(chk&&chk.some((c,j)=>S.v[k+'x'+j]));
   const warn=partial&&!S.v[k+'s'];
   const filled=!!S.v[k+'s'];
-  return `<div class="it${warn?' warn':filled?' filled':''}"><div class="hd"><b>${esc(name)}</b>
-  ${opts?sel(k+'o',opts):''}${opts2?sel(k+'o2',opts2):''}<button class="mini" data-act="dup" data-r="${p}" data-b="${esc(dupBase??name)}" data-i="${esc(key)}" title="Ajouter une ligne ${esc(name)} juste en dessous">+</button>${removable?`<button class="mini d" data-act="delx" data-r="${p}" data-id="${esc(key)}" title="Retirer cette ligne">×</button>`:''}</div>
+  const displayName=S.v[k+'nm']||name;
+  return `<div class="it${warn?' warn':filled?' filled':''}"><div class="hd"><input class="it-title" style="font-weight:600;border:0;background:none;padding:2px;flex:1;min-width:0" data-iname="${esc(p)}" data-ikey="${esc(key)}" value="${esc(displayName)}">
+  ${opts?sel(k+'o',opts):''}${opts2?sel(k+'o2',opts2):''}<button class="mini" data-act="dup" data-r="${p}" data-b="${esc(dupBase??name)}" data-i="${esc(key)}" title="Ajouter une ligne ${esc(displayName)} juste en dessous">+</button>${removable?`<button class="mini d" data-act="delx" data-r="${p}" data-id="${esc(key)}" title="Retirer cette ligne">×</button>`:''}</div>
   ${cn?`<div class="g cn">${cn.map((c,j)=>`<label class="f">${c}<input type="number" min="0" inputmode="numeric" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></label>`).join('')}</div>`:''}
   ${chk?`<div class="row">${chk.map((c,j)=>`<button class="c${S.v[k+'x'+j]?' on':''}" data-k="${k}x${j}" data-t="1">${esc(c)}</button>`).join('')}</div>`:''}
   ${cond&&S.v[k+'o']===cond.when?`<div class="g cn"><label class="f">${cond.label}<input type="number" min="0" inputmode="numeric" data-k="${k}cc" value="${esc(S.v[k+'cc']||'')}"></label></div>`:''}
@@ -1078,18 +1080,19 @@ function roomItems(r){
   return h;
 }
 const SC_LAV=SC.filter(c=>!['Flexible','Douchette','Inverseur'].includes(c));
-const sanItem=(k,n,cols,extra)=>{cols=cols||SC;return `<div class="it${S.v[k+'s']?' filled':''}"><div class="hd"><b>${n}</b>${extra||''}</div><div class="g"><label class="f">Revêtement${sel(k+'r',REV)}</label><label class="f">État${sel(k+'s',SS)}</label>${cols.map((c,j)=>`<label class="f">${c}${sel(k+j,SS)}</label>`).join('')}</div>${ob(k)}</div>`};
+const sanItem=(k,n,cols,extra,roomId)=>{cols=cols||SC;const display=S.v[k+'nm']||n;return `<div class="it${S.v[k+'s']?' filled':''}"><div class="hd"><input class="it-title" style="font-weight:600;border:0;background:none;padding:2px;flex:1;min-width:0" data-k="${k}nm" value="${esc(display)}"><button class="mini" data-act="dupsan" data-r="${roomId||''}" title="Dupliquer juste en dessous">+</button>${extra||''}</div><div class="g"><label class="f">Revêtement${sel(k+'r',REV)}</label><label class="f">État${sel(k+'s',SS)}</label>${cols.map((c,j)=>`<label class="f">${c}${sel(k+j,SS)}</label>`).join('')}</div>${ob(k)}</div>`};
 const san=id=>{
   let h='<h3>Sanitaires</h3>';
-  SN.forEach((n,i)=>{const extra=n==='Lavabo'?`<button class="mini" data-act="dupsan" data-r="${id}" title="Dupliquer le lavabo">+</button>`:'';
-    h+=sanItem('sn'+id+'.'+i+'.',n,null,extra)});
-  (S.san[id]||[]).forEach(eid=>{h+=sanItem('sn'+id+'.x'+eid+'.','Lavabo',null,`<button class="mini d" data-act="delsan" data-r="${id}" data-id="${eid}" title="Retirer">×</button>`)});
+  SN.forEach((n,i)=>{
+    h+=sanItem('sn'+id+'.'+i+'.',n,null,'',id);
+  });
+  (S.san[id]||[]).forEach(eid=>{h+=sanItem('sn'+id+'.x'+eid+'.','Lavabo',null,`<button class="mini d" data-act="delsan" data-r="${id}" data-id="${eid}" title="Retirer">×</button>`,id)});
   return h;
 };
-const wcCard=id=>{const k='wcg'+id+'.',filled=WCF.some((c,j)=>S.v[k+j]);return `<div class="it${filled?' filled':''}"><b>WC</b><div class="g">${WCF.map((c,j)=>`<label class="f">${c}${sel(k+j,SS)}</label>`).join('')}</div>${ob(k)}</div>`};
+const wcCard=id=>{const k='wcg'+id+'.',filled=WCF.some((c,j)=>S.v[k+j]);const display=S.v[k+'nm']||'WC';return `<div class="it${filled?' filled':''}"><div class="hd"><input class="it-title" style="font-weight:600;border:0;background:none;padding:2px;flex:1;min-width:0" data-k="${k}nm" value="${esc(display)}"><button class="mini" data-act="dupwc" data-r="${id}" title="Dupliquer le bloc WC">+</button></div><div class="g">${WCF.map((c,j)=>`<label class="f">${c}${sel(k+j,SS)}</label>`).join('')}</div>${ob(k)}</div>`};
 const meters=()=>`<h3>Compteurs</h3>`+S.cp.map(c=>{const k='cp'+c.id,l=MT[c.t],f=(s,t)=>`<label class="f">${t}<input data-k="${k+s}" value="${esc(S.v[k+s]||'')}"></label>`;
   const svc=`<div class="seg"><span>État</span><button class="c${S.v[k+'svc']==='En service'?' on':''}" data-k="${k}svc" data-v="En service">En service</button><button class="c${S.v[k+'svc']==='Coupé(e)'?' on':''}" data-k="${k}svc" data-v="Coupé(e)">Coupé(e)</button></div>`;
-  return `<div class="it"><div class="hd"><b>${c.t}</b><button class="mini" data-act="dupcp" data-r="${c.id}" title="Dupliquer juste en dessous">+</button>${c.orig?'':`<button class="btn d sm" data-act="delcp" data-r="${c.id}">Retirer</button>`}</div><div class="g">${f('n','N° compteur')}${f('e','Emplacement')}${f('a',l[0])}${l[1]?f('b',l[1]):''}</div>${svc}<label class="f">Observations<textarea class="ob" rows="1" data-k="${k}obs" placeholder="Observations">${esc(S.v[k+'obs']||'')}</textarea></label></div>`}).join('')+`<div class="act"><select id="nc" style="width:auto">${Object.keys(MT).map(t=>`<option>${t}</option>`).join('')}</select><button class="btn sm" data-act="addcp">Ajouter un compteur</button></div>`;
+  return `<div class="it"><div class="hd"><input class="it-title" style="font-weight:600;border:0;background:none;padding:2px;flex:1;min-width:0" data-cpname="${c.id}" value="${esc(c.t)}"><button class="mini" data-act="dupcp" data-r="${c.id}" title="Dupliquer juste en dessous">+</button>${c.orig?'':`<button class="btn d sm" data-act="delcp" data-r="${c.id}">Retirer</button>`}</div><div class="g">${f('n','N° compteur')}${f('e','Emplacement')}${f('a',l[0])}${l[1]?f('b',l[1]):''}</div>${svc}<label class="f">Observations<textarea class="ob" rows="1" data-k="${k}obs" placeholder="Observations">${esc(S.v[k+'obs']||'')}</textarea></label></div>`}).join('')+`<div class="act"><select id="nc" style="width:auto">${Object.keys(MT).map(t=>`<option>${t}</option>`).join('')}</select><button class="btn sm" data-act="addcp">Ajouter un compteur</button></div>`;
 const ivPh=id=>`<div class="ph" id="phs-${id}">${phView(id)}</div><div class="act"><label class="btn sm">Photo<input type="file" accept="image/*" capture="environment" hidden data-ph="${id}"></label><label class="btn sm">Galerie<input type="file" accept="image/*" multiple hidden data-ph="${id}"></label></div>`;
 const ivRow=r=>{const k='iv'+r.id,f=(s,l)=>`<button class="c${S.v[k+s]?' on':''}" data-k="${k+s}" data-t="1">${l}</button>`,
   n=(s,l,x='')=>`<label class="f">${l}<input ${x} data-k="${k+s}" value="${esc(S.v[k+s]||'')}"></label>`;
@@ -1317,11 +1320,10 @@ function renderCore(){
     h=`<label class="f">Nom de la pièce<input data-rn="${r.id}" value="${esc(r.n)}"></label>`;
     if(r.t==='balcon')h+=`<label class="f">Pièce associée${sel(r.id+'.assoc',S.rooms.filter(x=>x.id!==r.id).map(x=>x.n))}</label>`;
     h+=`<p class="lg">NV non vérifié · NF neuf · BE bon état · EU état d’usage · ME mauvais état · HS hors service ${isSortant()?'· 1 à changer/réparer · 2 à nettoyer':''}</p>`;
-    if(r.t==='wc')h+=wcCard(r.id)+sanItem('wcs'+r.id+'.','Lave-main',SC_LAV);
-    if(r.t==='sdb')h+=wcCard(r.id);
     h+=roomItems(r);
     h+=`<div class="act"><input id="xn" placeholder="Nouvelle ligne (ex. Rosier, Store…)" style="flex:1"><button class="btn sm" data-act="addx" data-r="${r.id}">Ajouter une ligne</button></div>`;
-    if(r.t==='sdb')h+=san(r.id);
+    if(r.t==='sdb')h+=san(r.id)+wcCard(r.id);
+    if(r.t==='wc')h+=wcCard(r.id)+sanItem('wcs'+r.id+'.','Lave-main',SC_LAV,'',r.id);
     h+=photoBlock(r.id);
     h+=`<div class="act"><button class="btn ${S.v[r.id+'.done']?'p':''} sm" data-act="donebtn" data-r="${r.id}">${S.v[r.id+'.done']?'✓ Pièce terminée':'Marquer la pièce comme terminée'}</button></div>`;
     h+=`<h3>Ajouter une pièce</h3><div class="act"><select id="nt" style="width:auto">${Object.entries(TPL).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join('')}</select><button class="btn sm" data-act="add">Ajouter</button><button class="btn d sm" data-act="del" data-r="${r.id}">Supprimer cette pièce</button></div>`;
@@ -1366,6 +1368,7 @@ document.addEventListener('click',e=>{
   if(d.act==='addiv'){const l=S.iv[S.iv.length-1],id='i'+Date.now();S.iv.push({id});if(l)S.v['iv'+id+'p']=S.v['iv'+l.id+'p'];S.v['iv'+id+'n']='1';render();save()}
   if(d.act==='dupsan'){(S.san[d.r]=S.san[d.r]||[]).push(uid());render();save()}
   if(d.act==='delsan'){S.san[d.r]=(S.san[d.r]||[]).filter(x=>x!==d.id);render();save()}
+  if(d.act==='dupwc'){(S.x[d.r]=S.x[d.r]||[]).push({id:uid(),n:'WC'});render();save()}
   if(d.act==='deliv'){S.iv=S.iv.filter(r=>r.id!==d.r);delete S.ph['iv'+d.r];render();save();savePh()}
   if(d.act==='addan'){S.an.push({id:'a'+Date.now(),n:'Élément'});render();save()}
   if(d.act==='delan'){S.an=S.an.filter(o=>o.id!==d.r);render();save()}
@@ -1455,6 +1458,17 @@ function onIn(e){
   if(t.classList.contains('ob'))grow(t);
   if(t.dataset.rn){const r=S.rooms.find(x=>x.id===t.dataset.rn);r.n=t.value;save();return}
   if(t.dataset.nmid){const arr=t.dataset.nmtag==='an'?S.an:S.kl,o=arr.find(x=>x.id===t.dataset.nmid);if(o)o.n=t.value;save();return}
+  if(t.dataset.iname&&t.dataset.ikey){
+    const p=t.dataset.iname,key=t.dataset.ikey,k=p+'.'+key;
+    if(key.charAt(0)==='e'){
+      const ex=(S.x[p]||[]).find(x=>x.id===key);
+      if(ex)ex.n=t.value;
+    }else{
+      S.v[k+'nm']=t.value;
+    }
+    save();return;
+  }
+  if(t.dataset.cpname){const c=S.cp.find(x=>x.id===t.dataset.cpname);if(c)c.t=t.value;save();return}
   if(t.dataset.chifroom){ensureChif();const room=S.chif.rooms.find(r=>String(r.id)===String(t.dataset.chifroom));if(room)room.name=t.value;save();return}
   if(t.dataset.chifline){ensureChif();const parts=t.dataset.chifline.split('.');const rid=parts[0],lid=parts[1],field=parts[2];const room=S.chif.rooms.find(r=>String(r.id)===String(rid));const line=room&&room.lines.find(l=>String(l.id)===String(lid));if(!line)return;
     if(field==='qty'||field==='prix'||field==='coef')line[field]=parseFloat(t.value)||0;
@@ -1497,20 +1511,6 @@ function onIn(e){
 document.addEventListener('input',onIn);
 document.addEventListener('change',async e=>{
   const t=e.target;
-  if(t.dataset.sel){
-    const wrap=t.closest('.selwrap');
-    const other=wrap&&wrap.querySelector('.selother');
-    if(t.value==='__other__'){
-      if(other){other.style.display='block';other.focus();S.v[t.dataset.k]=other.value||'';}
-    }else{
-      if(other){other.style.display='none';other.value='';}
-      S.v[t.dataset.k]=t.value;
-    }
-    save();return;
-  }
-  if(t.classList.contains('selother')){
-    S.v[t.dataset.k]=t.value;save();return;
-  }
   if(t.tagName==='SELECT'&&t.dataset.k){
     S.v[t.dataset.k]=t.value;save();
     if(t.dataset.k==='sousType'||t.dataset.k==='meub')render();
