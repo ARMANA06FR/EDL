@@ -1,42 +1,41 @@
-// Service worker EDL — EDL 06 IMMO
-// Met l'application en cache pour un fonctionnement hors connexion.
-// Incrémenter CACHE à chaque nouvelle mise en ligne pour forcer la mise à jour.
-const CACHE = 'edl-cache-v3';
-const PRECACHE = [
+/* EDL 06 IMMO — service worker (cache offline basique) */
+const CACHE = 'edl-v1';
+const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  './icon-512-maskable.png'
+  './apple-touch-icon.png'
 ];
 
-self.addEventListener('install', e => {
-  self.skipWaiting();
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE)));
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())
+  );
 });
 
-self.addEventListener('activate', e => {
-  e.waitUntil(
+self.addEventListener('activate', event => {
+  event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });
 
-// Cache-first pour les fichiers de l'app, avec repli réseau puis mise à jour du cache.
-self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      const fetchPromise = fetch(e.request).then(res => {
-        if (res && res.status === 200) {
-          const copy = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, copy));
+self.addEventListener('fetch', event => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  event.respondWith(
+    caches.match(req).then(cached => {
+      const fetched = fetch(req).then(res => {
+        if (res && res.ok && (req.url.startsWith(self.location.origin))) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(req, clone));
         }
         return res;
-      }).catch(() => cached || caches.match('./index.html'));
-      return cached || fetchPromise;
+      }).catch(() => cached);
+      return cached || fetched;
     })
   );
 });

@@ -1,18 +1,25 @@
 {
   "name": "État des lieux — EDL 06 IMMO",
   "short_name": "EDL",
-  "description": "Grille numérique d'état des lieux EDL 06 IMMO",
+  "description": "Constat d'état des lieux d'entrée et de sortie",
   "start_url": "./index.html",
-  "scope": "./",
-  "id": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#f4f6f6",
+  "background_color": "#0e6d8c",
   "theme_color": "#0e6d8c",
   "lang": "fr",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }
