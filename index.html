@@ -86,9 +86,12 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 .row{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 .c{border:1px solid var(--line);background:none;color:var(--ink);border-radius:8px;padding:8px 12px;min-height:40px;font:inherit;font-size:14px;font-weight:500}
 .c.on{background:var(--c,var(--acc));border-color:var(--c,var(--acc));color:var(--t,var(--accf))}
-.c.tc-btn{display:inline-flex;align-items:center;justify-content:center;padding:0;width:40px;min-width:40px;max-width:40px;height:40px;min-height:40px;box-sizing:border-box;flex:none;overflow:hidden}
+.c.tc-btn{display:inline-flex;align-items:center;justify-content:center;padding:0;width:50px;min-width:50px;max-width:50px;height:40px;min-height:40px;box-sizing:border-box;flex:none;overflow:hidden}
 .c.tc-btn input{width:100%;height:100%;border:0;background:transparent;text-align:center;font:inherit;font-size:11px;font-weight:500;color:inherit;padding:0;margin:0;outline:none;line-height:40px}
 .c.tc-btn input::placeholder{color:var(--mut);opacity:.9;font-size:10px}
+.obs-row{display:flex;align-items:flex-start;gap:8px;margin-top:6px}
+.obs-row .tc-btn{flex:none;margin-top:0}
+.obs-row .ob{flex:1;margin-top:0}
 .rsub{margin:4px 0 0;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 .rsub .c{padding:5px 9px;min-height:30px;font-size:12px;font-weight:400;opacity:.8;border-radius:7px}
 .rsub .c.on{opacity:1}
@@ -122,10 +125,12 @@ canvas.sg.locked{border-color:var(--be);border-width:2px}
 #recap.show tr td:first-child,#recap.show tr th:first-child{border-radius:8px 0 0 8px}
 #recap.show tr td:last-child,#recap.show tr th:last-child{border-radius:0 8px 8px 0}
 #recap.show th{background:#eef3f5;font-weight:600}
-#recap.show img{max-width:160px;margin:3px}
-#recap.show .hdband{background:#0e6d8c;color:#fff;border-radius:12px;padding:16px 20px;margin-bottom:12px}
+#recap.show img{max-width:280px;max-height:280px;width:auto;height:auto;object-fit:contain;margin:3px;border-radius:6px}
+#recap.show .hdband{background:#0e6d8c;color:#fff;border-radius:12px;padding:16px 20px;margin-bottom:12px;text-align:center}
 #recap.show .hdband .brand{font-weight:800;font-size:20px;letter-spacing:.06em;display:block}
-#recap.show .hdband .sub{font-size:13px;opacity:.9}
+#recap.show .hdband .sub{font-size:13px;opacity:.9;display:block}
+#recap.show .hdband .subname{font-size:15px;font-weight:600;display:block;margin-top:8px}
+#recap.show .hdband .subsiren{font-size:13px;opacity:.9;display:block;margin-top:2px}
 #recap.show .sum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
 #recap.show .sc{font-size:12px;padding:5px 10px;border-radius:20px;color:#333;font-weight:500}
 #rcls{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:10px;z-index:31}
@@ -1073,9 +1078,9 @@ function item(p,key,def,flags=true,dupBase){
   ${(opts||opts2)?`<div class="row sel-row">${opts?sel(k+'o',opts):''}${opts2?sel(k+'o2',opts2):''}</div>`:''}
   ${chk?`<div class="row">${chk.map((c,j)=>`<button class="c${S.v[k+'x'+j]?' on':''}" data-k="${k}x${j}" data-t="1">${esc(c)}</button>`).join('')}</div>`:''}
   ${cond&&S.v[k+'o']===cond.when?`<div class="g cn"><label class="f">${cond.label}<input type="number" min="0" inputmode="numeric" data-k="${k}cc" value="${esc(S.v[k+'cc']||'')}"></label></div>`:''}
-  ${noetat?'':`<div class="row">${trchBtn}${ST.map(([c,t,col])=>chip(k+'s',c,c,t,col)).join('')}</div>`}
+  ${noetat?'':`<div class="row">${ST.map(([c,t,col])=>chip(k+'s',c,c,t,col)).join('')}</div>`}
   ${flags&&sortant?`<div class="rsub">${fl('1','1 · À réparer')}${fl('2','2 · À nettoyer')}</div>`:''}
-  ${ob(k)}</div>`;
+  <div class="obs-row">${trchBtn}${ob(k)}</div></div>`;
 }
 function roomItems(r){
   const ex=S.x[r.id]||[];
@@ -1643,7 +1648,7 @@ function recap(){
   const fmtVal=val=>{if(Array.isArray(val))return val.join(' · ');return val||''};
   const tbl=G=>G.map(([t,f])=>`<h2>${esc(t)}</h2><table>${f.map(([k,l,typ])=>row(l,typ==='date'?fmtDate(S.v[k]):fmtVal(S.v[k]))).join('')}</table>`).join('');
   const typ=[S.v.sensE&&'Entrant',S.v.sensS&&'Sortant'].filter(Boolean).join(' + ')||'—';
-  let h=`<div class="hdband"><span class="brand">EDL 06 IMMO</span><span class="sub">Constat d’état des lieux</span></div><table>${row('Type d’état des lieux',typ)}</table>${tbl(GEN)}<h2>Compteurs</h2><table>${S.cp.map(c=>{const k='cp'+c.id,l=MT[c.t];const parts=[S.v[k+'svc'],S.v[k+'a']&&(l[0]+' : '+S.v[k+'a']),l[1]&&S.v[k+'b']&&(l[1]+' : '+S.v[k+'b']),S.v[k+'obs']&&('Obs. : '+S.v[k+'obs'])].filter(Boolean);return row(c.t+(S.v[k+'n']?' n° '+S.v[k+'n']:'')+(S.v[k+'e']?' ('+S.v[k+'e']+')':''),parts.join(' — '))}).join('')}</table>${(S.ph.cpt||[]).map(d=>`<img src="${d}">`).join('')}${tbl(CPT)}`;
+  let h=`<div class="hdband"><span class="brand">EDL 06 IMMO</span><span class="sub">Constat d’état des lieux</span><span class="subname">Frédéric ARMANA</span><span class="subsiren">N° SIREN 518 242 540</span></div><table>${row('Type d’état des lieux',typ)}</table>${tbl(GEN)}<h2>Compteurs</h2><table>${S.cp.map(c=>{const k='cp'+c.id,l=MT[c.t];const parts=[S.v[k+'svc'],S.v[k+'a']&&(l[0]+' : '+S.v[k+'a']),l[1]&&S.v[k+'b']&&(l[1]+' : '+S.v[k+'b']),S.v[k+'obs']&&('Obs. : '+S.v[k+'obs'])].filter(Boolean);return row(c.t+(S.v[k+'n']?' n° '+S.v[k+'n']:'')+(S.v[k+'e']?' ('+S.v[k+'e']+')':''),parts.join(' — '))}).join('')}</table>${(S.ph.cpt||[]).map(d=>`<img src="${d}">`).join('')}${tbl(CPT)}`;
   const line=(p,key,def)=>{const [n,o,cn,chk,dp,cond]=def,k=p+'.'+key,s=S.v[k+'s'],b=S.v[k+'b'];
     const ty=[S.v[k+'o'],S.v[k+'o2'],...(cn||[]).map((c,j)=>S.v[k+'c'+j]?c+' '+S.v[k+'c'+j]:''),...(chk||[]).map((c,j)=>S.v[k+'x'+j]?c:''),cond&&S.v[k+'cc']?cond.label+' '+S.v[k+'cc']:''].filter(Boolean).join(', ');
     if(!(s||b||ty||S.v[k+'t']||S.v[k+'1']||S.v[k+'2']))return '';
@@ -1673,7 +1678,7 @@ function recap(){
 }
 function buildDoc(){
   const h=recap();
-  return '<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>État des lieux — EDL 06 IMMO</title><style>body{font:14px/1.4 system-ui,sans-serif;margin:20px;color:#17252d;max-width:900px}table{border-collapse:separate;border-spacing:0 6px;width:100%;margin:6px 0 16px;font-size:13px}td,th{border:1px solid #e2e6e8;padding:7px 9px;text-align:left;vertical-align:top}tr td:first-child,tr th:first-child{border-radius:8px 0 0 8px}tr td:last-child,tr th:last-child{border-radius:0 8px 8px 0}th{background:#eef3f5;font-weight:600}h2{margin:20px 0 4px;font-size:17px}img{max-width:160px;margin:3px;border-radius:6px}.hdband{background:#0e6d8c;color:#fff;border-radius:12px;padding:18px 22px;margin-bottom:14px}.hdband .brand{font-weight:800;font-size:22px;letter-spacing:.06em;display:block}.hdband .sub{font-size:13px;opacity:.9}.sum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}.sc{font-size:12px;padding:5px 10px;border-radius:20px;color:#333;font-weight:500}@media print{body{margin:8mm}}</style><body>'+h;
+  return '<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>État des lieux — EDL 06 IMMO</title><style>body{font:14px/1.4 system-ui,sans-serif;margin:20px;color:#17252d;max-width:900px}table{border-collapse:separate;border-spacing:0 6px;width:100%;margin:6px 0 16px;font-size:13px}td,th{border:1px solid #e2e6e8;padding:7px 9px;text-align:left;vertical-align:top}tr td:first-child,tr th:first-child{border-radius:8px 0 0 8px}tr td:last-child,tr th:last-child{border-radius:0 8px 8px 0}th{background:#eef3f5;font-weight:600}h2{margin:20px 0 4px;font-size:17px}img{max-width:280px;max-height:280px;width:auto;height:auto;object-fit:contain;margin:3px;border-radius:6px}.hdband{background:#0e6d8c;color:#fff;border-radius:12px;padding:18px 22px;margin-bottom:14px;text-align:center}.hdband .brand{font-weight:800;font-size:22px;letter-spacing:.06em;display:block}.hdband .sub{font-size:13px;opacity:.9;display:block}.hdband .subname{font-size:15px;font-weight:600;display:block;margin-top:8px}.hdband .subsiren{font-size:13px;opacity:.9;display:block;margin-top:2px}.sum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}.sc{font-size:12px;padding:5px 10px;border-radius:20px;color:#333;font-weight:500}@media print{body{margin:8mm}}</style><body>'+h;
 }
 const docName=()=>(S.v.rdv?S.v.rdv+' ':'')+'EDL.html';
 $('#exp').onclick=async()=>{
