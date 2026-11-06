@@ -36,6 +36,14 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 #tabs{display:flex;gap:6px;overflow-x:auto;padding:0 12px 8px}
 .tb{flex:none;border:1px solid var(--line);background:none;color:var(--ink);padding:7px 12px;border-radius:8px;font:inherit;font-size:14px}
 .tb.on{background:var(--acc);border-color:var(--acc);color:var(--accf)}
+.tb.done{background:#c8e6d0;border-color:#9dccab;color:#1a4d2e}
+.tb.done.on{background:var(--acc);border-color:var(--acc);color:var(--accf)}
+.tb.started{background:#fde8c8;border-color:#f0c98a;color:#6b4a12}
+.tb.started.on{background:var(--acc);border-color:var(--acc);color:var(--accf)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tb.done{background:#1e3d28;border-color:#2e5c3a;color:#a8d4b4}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tb.started{background:#3d2e14;border-color:#6b4a1a;color:#f0d9a8}}
+:root[data-theme="dark"] .tb.done{background:#1e3d28;border-color:#2e5c3a;color:#a8d4b4}
+:root[data-theme="dark"] .tb.started{background:#3d2e14;border-color:#6b4a1a;color:#f0d9a8}
 main{max-width:760px;margin:0 auto;padding:12px;padding-bottom:80px}
 h2{font:600 22px 'Barlow Condensed',Barlow,sans-serif;margin:18px 0 8px}
 h3{font-size:15px;margin:16px 0 6px;color:var(--mut);font-weight:600}
@@ -60,14 +68,20 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 .badge.diff,.badge.same{background:#eef1f2;color:#5d6d76}
 .mini.d{border-color:var(--hs);color:var(--hs)}
 .tb .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--be);margin-left:5px;vertical-align:middle}
-.hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
-.hd b,.it-title{flex:1;font-weight:600;font-size:inherit;color:inherit}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.hd b,.it-title{flex:1;font-weight:600;font-size:inherit;color:inherit;min-width:80px}
 .it-title{border:0;background:none;padding:2px;min-width:0;outline:none;width:100%}
 .it-title:focus{outline:1px solid var(--acc);border-radius:4px}
+.hd .hd-nb{flex:none;width:auto;min-width:60px;margin:0}
+.hd .hd-nb input{width:56px;padding:4px 6px}
+.hd .tc{flex:none}
+.hd .tc input{width:56px;padding:4px 6px}
 .hd select{width:auto;max-width:50%;padding:5px}
-.sel-combo{width:auto;max-width:55%;padding:5px 8px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:14px;background:var(--card);color:var(--ink);min-width:100px}
-.hd .sel-combo{max-width:50%}
-.f .sel-combo{max-width:100%;width:100%}
+.selwrap{display:flex;flex-direction:column;gap:4px}
+.selwrap select{width:100%;min-width:120px;padding:5px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:14px;background:var(--card);color:var(--ink)}
+.selother{width:100%;padding:5px 8px;border:1px solid var(--acc);border-radius:6px;font:inherit;font-size:14px;background:var(--card);color:var(--ink)}
+.hd .selwrap{max-width:50%}
+.f .selwrap{width:100%}
 .mini{border:1px solid var(--line);background:none;color:var(--mut);border-radius:7px;width:26px;height:26px;font:inherit;font-size:15px;line-height:1;flex:none}
 .row{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 .c{border:1px solid var(--line);background:none;color:var(--ink);border-radius:8px;padding:8px 12px;min-height:40px;font:inherit;font-size:14px;font-weight:500}
@@ -919,8 +933,8 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('service-worke
 
 const sel=(k,o)=>{
   const v=S.v[k]||'';
-  const id='dl_'+k.replace(/[^a-zA-Z0-9]/g,'_');
-  return `<input list="${id}" data-k="${esc(k)}" value="${esc(v)}" placeholder="—" class="sel-combo"><datalist id="${id}">${o.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>`;
+  const inList=!v||o.includes(v);
+  return `<div class="selwrap"><select data-k="${esc(k)}" data-sel="${esc(k)}"><option value="">—</option>${o.map(x=>`<option${v===x?' selected':''}>${esc(x)}</option>`).join('')}<option value="__other__"${!inList?' selected':''}>Autre…</option></select><input class="selother" data-k="${esc(k)}" value="${!inList?esc(v):''}" placeholder="Saisir une autre option…" style="display:${!inList?'block':'none'}"></div>`;
 };
 function fld([k,l,t]){
   if(k==='sousType'){
@@ -1048,12 +1062,14 @@ function item(p,key,def,flags=true,dupBase){
   const warn=partial&&!S.v[k+'s'];
   const filled=!!S.v[k+'s'];
   const displayName=S.v[k+'nm']||name;
+  const nbFields=cn?cn.map((c,j)=>`<label class="f hd-nb">${c}<input type="number" min="0" inputmode="numeric" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></label>`).join(''):'';
+  const trchField=(!noetat&&!notrch)?`<span class="tc"><input type="number" min="0" inputmode="numeric" placeholder="TrCh" data-k="${k}t" value="${esc(S.v[k+'t']||'')}"></span>`:'';
   return `<div class="it${warn?' warn':filled?' filled':''}"><div class="hd"><input class="it-title" style="font-weight:600;border:0;background:none;padding:2px;flex:1;min-width:0" data-iname="${esc(p)}" data-ikey="${esc(key)}" value="${esc(displayName)}">
-  ${opts?sel(k+'o',opts):''}${opts2?sel(k+'o2',opts2):''}<button class="mini" data-act="dup" data-r="${p}" data-b="${esc(dupBase??name)}" data-i="${esc(key)}" title="Ajouter une ligne ${esc(displayName)} juste en dessous">+</button>${removable?`<button class="mini d" data-act="delx" data-r="${p}" data-id="${esc(key)}" title="Retirer cette ligne">×</button>`:''}</div>
-  ${cn?`<div class="g cn">${cn.map((c,j)=>`<label class="f">${c}<input type="number" min="0" inputmode="numeric" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></label>`).join('')}</div>`:''}
+  ${nbFields}${trchField}<button class="mini" data-act="dup" data-r="${p}" data-b="${esc(dupBase??name)}" data-i="${esc(key)}" title="Ajouter une ligne ${esc(displayName)} juste en dessous">+</button>${removable?`<button class="mini d" data-act="delx" data-r="${p}" data-id="${esc(key)}" title="Retirer cette ligne">×</button>`:''}</div>
+  ${(opts||opts2)?`<div class="row" style="margin-bottom:6px;gap:8px;align-items:center">${opts?sel(k+'o',opts):''}${opts2?sel(k+'o2',opts2):''}</div>`:''}
   ${chk?`<div class="row">${chk.map((c,j)=>`<button class="c${S.v[k+'x'+j]?' on':''}" data-k="${k}x${j}" data-t="1">${esc(c)}</button>`).join('')}</div>`:''}
   ${cond&&S.v[k+'o']===cond.when?`<div class="g cn"><label class="f">${cond.label}<input type="number" min="0" inputmode="numeric" data-k="${k}cc" value="${esc(S.v[k+'cc']||'')}"></label></div>`:''}
-  ${noetat?'':`<div class="row">${ST.map(([c,t,col])=>chip(k+'s',c,c,t,col)).join('')}${notrch?'':`<span class="tc"><input type="number" min="0" inputmode="numeric" placeholder="TrCh" data-k="${k}t" value="${esc(S.v[k+'t']||'')}"></span>`}</div>`}
+  ${noetat?'':`<div class="row">${ST.map(([c,t,col])=>chip(k+'s',c,c,t,col)).join('')}</div>`}
   ${flags&&sortant?`<div class="rsub">${fl('1','1 · À réparer')}${fl('2','2 · À nettoyer')}</div>`:''}
   ${ob(k)}</div>`;
 }
@@ -1102,20 +1118,29 @@ function dynList(arr,tag,extra,ph){
   return arr.map(o=>{const k=tag+o.id+'.';return `<div class="it"><div class="hd"><input style="font-weight:600;border:0;background:none;padding:2px" placeholder="${tag==='kl'?'Type de clé (ex. clé plate, badge…)':''}" data-nmid="${o.id}" data-nmtag="${tag}" value="${esc(o.n)}"><button class="mini" data-act="dup${tag}" data-r="${o.id}" title="Dupliquer juste en dessous">+</button>${o.orig?'':`<button class="btn d sm" data-act="del${tag}" data-r="${o.id}">Retirer</button>`}</div>${extra(k,o)}</div>`}).join('')
    +`<div class="act"><button class="btn sm" data-act="add${tag}">Ajouter</button></div>`;
 }
-function tabFilled(id){
+function tabDone(id){
+  if(S.rooms.some(x=>x.id===id))return !!S.v[id+'.done'];
+  if(['cpt','equi','inv','ann','cles','net','sig'].includes(id))return !!S.v[id+'.done'];
+  return false;
+}
+function tabStarted(id){
+  if(tabDone(id))return false;
   if(id==='gen')return !!(S.v.sensE||S.v.sensS||GENKEYS.some(k=>S.v[k]));
-  if(id==='cpt')return S.cp.some(c=>{const k='cp'+c.id;return S.v[k+'n']||S.v[k+'e']||S.v[k+'a']||S.v[k+'b']||S.v[k+'svc']||S.v[k+'obs']});
+  if(id==='cpt')return S.cp.some(c=>{const k='cp'+c.id;return S.v[k+'n']||S.v[k+'e']||S.v[k+'a']||S.v[k+'b']||S.v[k+'svc']||S.v[k+'obs']})||!!(S.ph.cpt&&S.ph.cpt.length);
   if(id==='equi')return CPTKEYS.some(k=>{const val=S.v[k];return Array.isArray(val)?val.length>0:!!val})||!!(S.ph.equi&&S.ph.equi.length);
-  if(id==='inv')return S.iv.some(r=>{const k='iv'+r.id;return S.v[k+'p']||S.v[k+'d']||S.v[k+'s']||S.v[k+'a']||S.v[k+'b']});
-  if(id==='ann')return S.an.some(o=>{const k='an'+o.id+'.';return S.v[k+'p']||S.v[k+'s']||S.v[k+'m']||S.v[k+'b']||S.v[k+'num']});
-  if(id==='cles')return total()>0;
+  if(id==='inv')return S.iv.some(r=>{const k='iv'+r.id;return S.v[k+'p']||S.v[k+'d']||S.v[k+'s']||S.v[k+'a']||S.v[k+'b']})||!!(S.ph.inv&&S.ph.inv.length);
+  if(id==='ann')return S.an.some(o=>{const k='an'+o.id+'.';return S.v[k+'p']||S.v[k+'s']||S.v[k+'m']||S.v[k+'b']||S.v[k+'num']})||!!(S.ph.ann&&S.ph.ann.length);
+  if(id==='cles')return total()>0||!!(S.ph.cles&&S.ph.cles.length);
   if(id==='net')return !!(S.v.net||S.v.netgb);
   if(id==='sig')return SIG.some(([k])=>S.v[k])||!!S.v.dent||!!S.v.com;
   if(id==='chif')return !!(S.chif&&S.chif.rooms&&S.chif.rooms.some(r=>r.lines&&r.lines.length));
   if(id==='cat')return GRILLE.length!==GRILLE_BASE.length;
-  if(S.rooms.some(x=>x.id===id))return !!S.v[id+'.done'];
+  if(S.rooms.some(x=>x.id===id)){
+    return Object.keys(S.v).some(k=>k.indexOf(id+'.')===0&&k!==id+'.done'&&S.v[k])||!!(S.ph[id]&&S.ph[id].length)||!!(S.x[id]&&S.x[id].length)||!!(S.san[id]&&S.san[id].length);
+  }
   return Object.keys(S.v).some(k=>k.indexOf(id+'.')===0&&S.v[k])||!!(S.ph[id]&&S.ph[id].length);
 }
+function tabFilled(id){return tabDone(id)||tabStarted(id)}
 function idBlock(){
   if(!S.baseline)return '';
   const bv=S.baseline.v||{};
@@ -1216,7 +1241,12 @@ function tabs(){
   if(S.baseline){t.push(['cmp','Comparatif']);t.push(['chif','Chiffrage']);}
   t.push(['sig','Signatures']);
   t.push(['cat','Catalogue']);
-  $('#tabs').innerHTML=t.map(([k,l])=>`<button class="tb${S.tab===k?' on':''}" data-tab="${k}">${esc(l)}${tabFilled(k)?'<span class="dot"></span>':''}</button>`).join('');
+  $('#tabs').innerHTML=t.map(([k,l])=>{
+    let cls='tb'+(S.tab===k?' on':'');
+    if(tabDone(k))cls+=' done';
+    else if(tabStarted(k))cls+=' started';
+    return `<button class="${cls}" data-tab="${k}">${esc(l)}</button>`;
+  }).join('');
 }
 const total=()=>S.kl.reduce((a,o)=>a+(parseInt(S.v['kl'+o.id+'.q'])||0),0);
 function phView(id){return (S.ph[id]||[]).map((d,i)=>`<div><img src="${d}" alt="Photo ${i+1}"><button data-act="rmph" data-r="${id}" data-i="${i}" aria-label="Supprimer la photo">×</button><button data-act="saveph" data-r="${id}" data-i="${i}" class="ph-save" aria-label="Enregistrer dans la galerie" title="Enregistrer dans la galerie">↓</button></div>`).join('')}
@@ -1323,7 +1353,11 @@ function renderCore(){
     h+=roomItems(r);
     h+=`<div class="act"><input id="xn" placeholder="Nouvelle ligne (ex. Rosier, Store…)" style="flex:1"><button class="btn sm" data-act="addx" data-r="${r.id}">Ajouter une ligne</button></div>`;
     if(r.t==='sdb')h+=san(r.id)+wcCard(r.id);
-    if(r.t==='wc')h+=wcCard(r.id)+sanItem('wcs'+r.id+'.','Lave-main',SC_LAV,'',r.id);
+    if(r.t==='wc'){
+      h+=wcCard(r.id);
+      h+=sanItem('wcs'+r.id+'.','Lave-main',SC_LAV,'',r.id);
+      (S.san[r.id]||[]).forEach(eid=>{h+=sanItem('sn'+r.id+'.x'+eid+'.','Lave-main',SC_LAV,`<button class="mini d" data-act="delsan" data-r="${r.id}" data-id="${eid}" title="Retirer">×</button>`,r.id)});
+    }
     h+=photoBlock(r.id);
     h+=`<div class="act"><button class="btn ${S.v[r.id+'.done']?'p':''} sm" data-act="donebtn" data-r="${r.id}">${S.v[r.id+'.done']?'✓ Pièce terminée':'Marquer la pièce comme terminée'}</button></div>`;
     h+=`<h3>Ajouter une pièce</h3><div class="act"><select id="nt" style="width:auto">${Object.entries(TPL).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join('')}</select><button class="btn sm" data-act="add">Ajouter</button><button class="btn d sm" data-act="del" data-r="${r.id}">Supprimer cette pièce</button></div>`;
@@ -1511,6 +1545,20 @@ function onIn(e){
 document.addEventListener('input',onIn);
 document.addEventListener('change',async e=>{
   const t=e.target;
+  if(t.dataset.sel){
+    const wrap=t.closest('.selwrap');
+    const other=wrap&&wrap.querySelector('.selother');
+    if(t.value==='__other__'){
+      if(other){other.style.display='block';other.focus();S.v[t.dataset.k]=other.value||'';}
+    }else{
+      if(other){other.style.display='none';other.value='';}
+      S.v[t.dataset.k]=t.value;
+    }
+    save();return;
+  }
+  if(t.classList.contains('selother')){
+    S.v[t.dataset.k]=t.value;save();return;
+  }
   if(t.tagName==='SELECT'&&t.dataset.k){
     S.v[t.dataset.k]=t.value;save();
     if(t.dataset.k==='sousType'||t.dataset.k==='meub')render();
