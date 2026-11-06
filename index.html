@@ -72,16 +72,17 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 .hd b,.it-title{flex:1;font-weight:600;font-size:inherit;color:inherit;min-width:80px}
 .it-title{border:0;background:none;padding:2px;min-width:0;outline:none;width:100%}
 .it-title:focus{outline:1px solid var(--acc);border-radius:4px}
-.hd .hd-nb{flex:none;width:auto;min-width:60px;margin:0}
-.hd .hd-nb input{width:56px;padding:4px 6px}
-.hd .tc{flex:none}
-.hd .tc input{width:56px;padding:4px 6px}
+.hd .hd-nb{flex:none}
+.hd .hd-nb input{width:56px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:13px;background:var(--card);color:var(--ink)}
+.tc input{width:56px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:13px;background:var(--card);color:var(--ink)}
 .hd select{width:auto;max-width:50%;padding:5px}
-.selwrap{display:flex;flex-direction:column;gap:4px}
-.selwrap select{width:100%;min-width:120px;padding:5px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:14px;background:var(--card);color:var(--ink)}
-.selother{width:100%;padding:5px 8px;border:1px solid var(--acc);border-radius:6px;font:inherit;font-size:14px;background:var(--card);color:var(--ink)}
-.hd .selwrap{max-width:50%}
+.selwrap{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px}
+.selwrap select{width:auto;min-width:120px;padding:5px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:14px;background:var(--card);color:var(--ink)}
+.selother{width:auto;min-width:120px;padding:5px 8px;border:1px solid var(--acc);border-radius:6px;font:inherit;font-size:14px;background:var(--card);color:var(--ink)}
+.sel-row{margin-bottom:6px;gap:8px;align-items:center;flex-wrap:wrap}
+.sel-row .tc{margin-left:auto}
 .f .selwrap{width:100%}
+.f .selwrap select,.f .selother{flex:1;min-width:100px}
 .mini{border:1px solid var(--line);background:none;color:var(--mut);border-radius:7px;width:26px;height:26px;font:inherit;font-size:15px;line-height:1;flex:none}
 .row{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 .c{border:1px solid var(--line);background:none;color:var(--ink);border-radius:8px;padding:8px 12px;min-height:40px;font:inherit;font-size:14px;font-weight:500}
@@ -1062,11 +1063,11 @@ function item(p,key,def,flags=true,dupBase){
   const warn=partial&&!S.v[k+'s'];
   const filled=!!S.v[k+'s'];
   const displayName=S.v[k+'nm']||name;
-  const nbFields=cn?cn.map((c,j)=>`<label class="f hd-nb">${c}<input type="number" min="0" inputmode="numeric" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></label>`).join(''):'';
+  const nbFields=cn?cn.map((c,j)=>`<span class="hd-nb"><input type="number" min="0" inputmode="numeric" placeholder="${esc(c)}" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></span>`).join(''):'';
   const trchField=(!noetat&&!notrch)?`<span class="tc"><input type="number" min="0" inputmode="numeric" placeholder="TrCh" data-k="${k}t" value="${esc(S.v[k+'t']||'')}"></span>`:'';
   return `<div class="it${warn?' warn':filled?' filled':''}"><div class="hd"><input class="it-title" style="font-weight:600;border:0;background:none;padding:2px;flex:1;min-width:0" data-iname="${esc(p)}" data-ikey="${esc(key)}" value="${esc(displayName)}">
-  ${nbFields}${trchField}<button class="mini" data-act="dup" data-r="${p}" data-b="${esc(dupBase??name)}" data-i="${esc(key)}" title="Ajouter une ligne ${esc(displayName)} juste en dessous">+</button>${removable?`<button class="mini d" data-act="delx" data-r="${p}" data-id="${esc(key)}" title="Retirer cette ligne">×</button>`:''}</div>
-  ${(opts||opts2)?`<div class="row" style="margin-bottom:6px;gap:8px;align-items:center">${opts?sel(k+'o',opts):''}${opts2?sel(k+'o2',opts2):''}</div>`:''}
+  ${nbFields}<button class="mini" data-act="dup" data-r="${p}" data-b="${esc(dupBase??name)}" data-i="${esc(key)}" title="Ajouter une ligne ${esc(displayName)} juste en dessous">+</button>${removable?`<button class="mini d" data-act="delx" data-r="${p}" data-id="${esc(key)}" title="Retirer cette ligne">×</button>`:''}</div>
+  ${(opts||opts2||trchField)?`<div class="row sel-row">${opts?sel(k+'o',opts):''}${opts2?sel(k+'o2',opts2):''}${trchField}</div>`:''}
   ${chk?`<div class="row">${chk.map((c,j)=>`<button class="c${S.v[k+'x'+j]?' on':''}" data-k="${k}x${j}" data-t="1">${esc(c)}</button>`).join('')}</div>`:''}
   ${cond&&S.v[k+'o']===cond.when?`<div class="g cn"><label class="f">${cond.label}<input type="number" min="0" inputmode="numeric" data-k="${k}cc" value="${esc(S.v[k+'cc']||'')}"></label></div>`:''}
   ${noetat?'':`<div class="row">${ST.map(([c,t,col])=>chip(k+'s',c,c,t,col)).join('')}</div>`}
