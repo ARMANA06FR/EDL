@@ -897,6 +897,71 @@ let tm;
 function msg(t){$('#st').textContent=t;clearTimeout(tm);tm=setTimeout(()=>$('#st').textContent='',2500)}
 function save(){try{localStorage.setItem('edl1',JSON.stringify({v:S.v,rooms:S.rooms,tab:S.tab,cp:S.cp,x:S.x,iv:S.iv,an:S.an,kl:S.kl,san:S.san,locE:S.locE,locS:S.locS,baseline:S.baseline,chif:S.chif}))}catch(e){msg('Sauvegarde impossible')}}
 function savePh(){try{localStorage.setItem('edl1p',JSON.stringify(S.ph))}catch(e){msg('Mémoire pleine : exporte avant de continuer')}}
+/* ===== Répertoire clients (persistant) ===== */
+let CLIENTS=[];
+function loadClients(){
+  try{const raw=localStorage.getItem('edl1clients');if(raw){const j=JSON.parse(raw);if(Array.isArray(j))CLIENTS=j;}}catch(e){}
+  if(!Array.isArray(CLIENTS))CLIENTS=[];
+}
+function saveClients(){try{localStorage.setItem('edl1clients',JSON.stringify(CLIENTS));}catch(e){msg('Répertoire clients : sauvegarde impossible')}}
+loadClients();
+function applyClientToEDL(c){
+  if(!c)return;
+  if(c.name!=null)S.v.client=c.name;
+  if(c.email!=null)S.v.cliente=c.email;
+  if(c.phone!=null)S.v.clientte=c.phone;
+  if(c.adr!=null)S.v.cadr=c.adr;
+  if(c.cp!=null)S.v.ccp=c.cp;
+  if(c.ville!=null)S.v.cville=c.ville;
+  if(c.rep!=null){S.v.clientrep=c.rep;if(c.rep)S.v['_show_clientrep']=true;}
+  save();msg('Client « '+(c.name||'')+' » appliqué à l’EDL');
+}
+function clientFromEDL(){
+  return {
+    id:uid(),
+    name:S.v.client||'',
+    email:S.v.cliente||'',
+    phone:S.v.clientte||'',
+    adr:S.v.cadr||'',
+    cp:S.v.ccp||'',
+    ville:S.v.cville||'',
+    rep:S.v.clientrep||''
+  };
+}
+function renderClients(){
+  let h='<h2>Répertoire clients</h2><p class="lg">Enregistre tes clients ici pour préremplir rapidement l’onglet Général.</p>';
+  h+='<div class="act"><button class="btn p sm" data-act="cliAdd">Ajouter un client</button><button class="btn sm" data-act="cliFromEdl">Enregistrer le client de cet EDL</button></div>';
+  if(!CLIENTS.length)h+='<p class="lg">Aucun client enregistré pour le moment.</p>';
+  CLIENTS.forEach((c,i)=>{
+    const open=S.v['_cliEdit']===c.id;
+    h+=`<div class="it"><div class="hd"><b>${esc(c.name||'Sans nom')}</b><span class="hd-actions">
+      <button class="btn sm" data-act="cliUse" data-id="${c.id}" title="Remplir l’onglet Général">Utiliser</button>
+      <button class="btn sm" data-act="cliEdit" data-id="${c.id}">${open?'Fermer':'Modifier'}</button>
+      <button class="mini d" data-act="cliDel" data-id="${c.id}" title="Supprimer">×</button>
+    </span></div>`;
+    if(!open){
+      h+=`<div class="lg">${[c.email,c.phone,c.adr,c.cp,c.ville].filter(Boolean).map(esc).join(' · ')||'—'}${c.rep?'<br>Rep. : '+esc(c.rep):''}</div>`;
+    }else{
+      h+=`<div class="g">
+        <label class="f">Nom / raison sociale<input data-cli="${c.id}" data-cf="name" value="${esc(c.name||'')}"></label>
+        <label class="f">E-mail<input data-cli="${c.id}" data-cf="email" value="${esc(c.email||'')}"></label>
+        <label class="f">Téléphone<input data-cli="${c.id}" data-cf="phone" value="${esc(c.phone||'')}"></label>
+        <label class="f">Adresse<input data-cli="${c.id}" data-cf="adr" value="${esc(c.adr||'')}"></label>
+        <label class="f">Code postal<input data-cli="${c.id}" data-cf="cp" value="${esc(c.cp||'')}"></label>
+        <label class="f">Ville<input data-cli="${c.id}" data-cf="ville" value="${esc(c.ville||'')}"></label>
+        <label class="f">Représentant(s)<input data-cli="${c.id}" data-cf="rep" value="${esc(c.rep||'')}"></label>
+      </div>`;
+    }
+    h+=`</div>`;
+  });
+  // Raccourci sélection rapide
+  if(CLIENTS.length){
+    h+=`<div class="it"><div class="hd"><b>Remplir rapidement l’EDL en cours</b></div>
+      <div class="act"><select id="cliPick" style="flex:1;min-width:160px"><option value="">— Choisir un client —</option>${CLIENTS.map(c=>`<option value="${c.id}">${esc(c.name||'Sans nom')}</option>`).join('')}</select>
+      <button class="btn p sm" data-act="cliPickUse">Appliquer à l’EDL</button></div></div>`;
+  }
+  return h;
+}
 function getTheme(){try{return localStorage.getItem('edl1theme')||''}catch(e){return ''}}
 function isDarkNow(){const t=getTheme();if(t==='dark')return true;if(t==='light')return false;return matchMedia('(prefers-color-scheme:dark)').matches}
 function applyTheme(){
@@ -1158,7 +1223,7 @@ function tabStarted(id){
 }
 function tabFilled(id){return tabDone(id)||tabStarted(id)}
 function allTabEntries(){
-  const t=[['gen','Général'],['cpt','Compteurs'],['equi','Équipements'],...S.rooms.map(r=>[r.id,r.n||'Pièce']),['inv','Inventaire'],['ann','Annexes'],['cles','Clés']];
+  const t=[['gen','Général'],['cli','Clients'],['cpt','Compteurs'],['equi','Équipements'],...S.rooms.map(r=>[r.id,r.n||'Pièce']),['inv','Inventaire'],['ann','Annexes'],['cles','Clés']];
   if(isSortant())t.push(['net','Nettoyage']);
   if(S.baseline){t.push(['cmp','Comparatif']);t.push(['chif','Chiffrage']);}
   t.push(['sig','Signatures']);
@@ -1275,7 +1340,7 @@ function compareList(){
   return out;
 }
 function tabs(){
-  const t=[['gen','Général'],['cpt','Compteurs'],['equi','Équipements'],...S.rooms.map(r=>[r.id,r.n||'Pièce']),['inv','Inventaire'],['ann','Annexes'],['cles','Clés']];
+  const t=[['gen','Général'],['cli','Clients'],['cpt','Compteurs'],['equi','Équipements'],...S.rooms.map(r=>[r.id,r.n||'Pièce']),['inv','Inventaire'],['ann','Annexes'],['cles','Clés']];
   if(isSortant())t.push(['net','Nettoyage']);
   if(S.baseline){t.push(['cmp','Comparatif']);t.push(['chif','Chiffrage']);}
   t.push(['sig','Signatures']);
@@ -1327,6 +1392,14 @@ function renderCore(){
     h=`<h2>Constat d’état des lieux</h2>`;
     h+=`<div class="it"><div class="hd"><b>Type d’état des lieux</b></div><div class="seg"><button class="c${S.v.sensE?' on':''}" data-k="sensE" data-t="1">Entrant</button><button class="c${S.v.sensS?' on':''}" data-k="sensS" data-t="1">Sortant</button></div></div>`;
     h+=groups(genRL);
+    if(CLIENTS.length){
+      h+=`<div class="it"><div class="hd"><b>Depuis le répertoire clients</b></div>
+        <div class="act"><select id="cliPickGen" style="flex:1;min-width:160px"><option value="">— Choisir un client —</option>${CLIENTS.map(c=>`<option value="${c.id}">${esc(c.name||'Sans nom')}</option>`).join('')}</select>
+        <button class="btn p sm" data-act="cliPickUseGen">Remplir</button>
+        <button class="btn sm" data-act="gotoCli">Gérer le répertoire</button></div></div>`;
+    }else{
+      h+=`<div class="act"><button class="btn sm" data-act="gotoCli">Ouvrir le répertoire clients</button></div>`;
+    }
     h+=`<div class="it"><div class="hd"><b>Représentant(s) du client</b></div>${repField('clientrep','Représentant(s)')}</div>`;
     if(!sO){
       h+=`<div class="it"><div class="hd"><b>Locataire entrant</b><span class="hd-actions"><button class="mini" data-act="duploc" data-side="E" title="Ajouter un locataire entrant">+</button></span></div><div class="g">${[['ent','Nom'],['entem','E-mail'],['entte','Téléphone']].map(fld).join('')}</div>${repField('entrep','Représentant(s)')}</div>`;
@@ -1345,6 +1418,7 @@ function renderCore(){
     h+=contactsBlock();
     h+=`<div class="act"><button class="btn ${S.v['gen.done']?'p':''} sm" data-act="donebtn" data-r="gen">${S.v['gen.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
   }
+  else if(T==='cli')h=renderClients();
   else if(T==='cpt')h=`<h2>Compteurs</h2>${meters()}${photoBlock('cpt')}<div class="act"><button class="btn ${S.v['cpt.done']?'p':''} sm" data-act="donebtn" data-r="cpt">${S.v['cpt.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
   else if(T==='equi')h=renderEqui();
   else if(T==='ann')h=`<h2>Annexes</h2>${dynList(S.an,'an',(k,o)=>`<div class="g">${['Cave','Garage','Grenier'].includes(o.n)?`<label class="f">N°<input data-k="${k}num" value="${esc(S.v[k+'num']||'')}"></label>`:''}<label class="f">Porte${sel(k+'p',SS)}</label><label class="f">Serrure${sel(k+'s',SS)}</label><label class="f">Vide ou m³ à vider<input data-k="${k}m" value="${esc(S.v[k+'m']||'')}"></label></div>${ob(k)}`)}${photoBlock('ann')}<div class="act"><button class="btn ${S.v['ann.done']?'p':''} sm" data-act="donebtn" data-r="ann">${S.v['ann.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
@@ -1547,8 +1621,10 @@ document.addEventListener('click',e=>{
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(val).then(()=>msg('Copié')).catch(()=>msg('Copie impossible'));
     else msg('Copie non disponible sur ce navigateur')}
   if(d.act==='impCancel'){pendingImport=null;hideModal()}
-  if(d.act==='impAsis'){applyImport(pendingImport,false);pendingImport=null;hideModal()}
-  if(d.act==='impSortie'){applyImport(pendingImport,true);pendingImport=null;hideModal()}
+  if(d.act==='impAsis'){applyImport(pendingImport,null);pendingImport=null;hideModal()}
+  if(d.act==='impSortie'){applyImport(pendingImport,'sortie');pendingImport=null;hideModal()}
+  if(d.act==='impEntreeKeep'){applyImport(pendingImport,'entree',true);pendingImport=null;hideModal()}
+  if(d.act==='impEntreeClear'){applyImport(pendingImport,'entree',false);pendingImport=null;hideModal()}
   if(d.act==='modalcancel'){window._modalOk=null;hideModal();return}
   if(d.act==='modalok'){const fn=window._modalOk;window._modalOk=null;hideModal();if(fn)fn();return}
   if(d.act==='showrep'){S.v['_show_'+d.k]=true;render();save();return}
@@ -1563,6 +1639,21 @@ document.addEventListener('click',e=>{
     else S.locS=(S.locS||[]).filter(x=>x.id!==d.id);
     render();save();return;
   }
+  if(d.act==='cliAdd'){CLIENTS.push({id:uid(),name:'',email:'',phone:'',adr:'',cp:'',ville:'',rep:''});S.v['_cliEdit']=CLIENTS[CLIENTS.length-1].id;saveClients();render();return}
+  if(d.act==='cliFromEdl'){
+    const c=clientFromEDL();
+    if(!c.name&&!c.email&&!c.phone){msg('Aucun client renseigné dans l’EDL');return}
+    const existing=CLIENTS.find(x=>x.name&&c.name&&x.name.toLowerCase()===c.name.toLowerCase());
+    if(existing){Object.assign(existing,{email:c.email||existing.email,phone:c.phone||existing.phone,adr:c.adr||existing.adr,cp:c.cp||existing.cp,ville:c.ville||existing.ville,rep:c.rep||existing.rep});msg('Client mis à jour dans le répertoire')}
+    else{CLIENTS.push(c);msg('Client ajouté au répertoire')}
+    saveClients();render();return;
+  }
+  if(d.act==='cliUse'){const c=CLIENTS.find(x=>x.id===d.id);if(c){applyClientToEDL(c);S.tab='gen';render();}return}
+  if(d.act==='cliEdit'){S.v['_cliEdit']=S.v['_cliEdit']===d.id?'':d.id;render();return}
+  if(d.act==='cliDel'){CLIENTS=CLIENTS.filter(x=>x.id!==d.id);saveClients();render();return}
+  if(d.act==='cliPickUse'){const id=$('#cliPick')&&$('#cliPick').value;const c=CLIENTS.find(x=>x.id===id);if(!c){msg('Choisis un client');return}applyClientToEDL(c);S.tab='gen';render();return}
+  if(d.act==='cliPickUseGen'){const id=$('#cliPickGen')&&$('#cliPickGen').value;const c=CLIENTS.find(x=>x.id===id);if(!c){msg('Choisis un client');return}applyClientToEDL(c);render();return}
+  if(d.act==='gotoCli'){S.tab='cli';render();return}
 });
 function onIn(e){
   const t=e.target;
@@ -1580,6 +1671,11 @@ function onIn(e){
     save();return;
   }
   if(t.dataset.cpname){const c=S.cp.find(x=>x.id===t.dataset.cpname);if(c)c.t=t.value;save();return}
+  if(t.dataset.cli&&t.dataset.cf){
+    const c=CLIENTS.find(x=>x.id===t.dataset.cli);
+    if(c){c[t.dataset.cf]=t.value;saveClients();}
+    return;
+  }
   if(t.dataset.chifroom){ensureChif();const room=S.chif.rooms.find(r=>String(r.id)===String(t.dataset.chifroom));if(room)room.name=t.value;save();return}
   if(t.dataset.chifline){ensureChif();const parts=t.dataset.chifline.split('.');const rid=parts[0],lid=parts[1],field=parts[2];const room=S.chif.rooms.find(r=>String(r.id)===String(rid));const line=room&&room.lines.find(l=>String(l.id)===String(lid));if(!line)return;
     if(field==='qty'||field==='prix'||field==='coef')line[field]=parseFloat(t.value)||0;
@@ -1793,7 +1889,7 @@ let pendingImport=null;
 function showModal(html){$('#modalBody').innerHTML=html;$('#modal').classList.add('show')}
 function hideModal(){$('#modal').classList.remove('show');$('#modalBody').innerHTML=''}
 function isObj(x){return x&&typeof x==='object'&&!Array.isArray(x)}
-function applyImport(j,toSortie){
+function applyImport(j,mode,keepStates){
   if(!isObj(j)){msg('Fichier invalide : ce n’est pas un EDL exporté par cette app');return}
   const rooms=Array.isArray(j.rooms)&&j.rooms.length?j.rooms:S.rooms;
   const cp=Array.isArray(j.cp)&&j.cp.length?j.cp:S.cp;
@@ -1807,15 +1903,14 @@ function applyImport(j,toSortie){
   const locE=Array.isArray(j.locE)?j.locE:[];
   const locS=Array.isArray(j.locS)?j.locS:[];
   try{
-    const newBaseline=toSortie?clone({v,rooms,x,san,iv,kl,locE,locS}):(isObj(j.baseline)?clone(j.baseline):null);
+    const newBaseline=mode==='sortie'?clone({v,rooms,x,san,iv,kl,locE,locS}):(isObj(j.baseline)?clone(j.baseline):null);
     S.v=v;S.rooms=rooms;S.cp=cp;S.x=x;S.iv=iv;S.san=san;S.an=an;S.kl=kl;S.ph=ph;S.locE=locE;S.locS=locS;
     S.baseline=newBaseline;S.chif=isObj(j.chif)?j.chif:null;
-    if(toSortie){
+    if(mode==='sortie'){
       S.v.sensS=true;delete S.v.sensE;
       if(S.v.ent)S.v.sor=S.v.ent;if(S.v.entem)S.v.sorem=S.v.entem;if(S.v.entte)S.v.sorte=S.v.entte;
       if(S.v.entrep)S.v.sorrep=S.v.entrep;
       delete S.v.ent;delete S.v.entem;delete S.v.entte;delete S.v.entrep;
-      // Extras entrants → sortants
       S.locS=(S.locE||[]).map(o=>{
         const p='locE'+o.id+'.',np='locS'+o.id+'.';
         if(S.v[p+'n'])S.v[np+'n']=S.v[p+'n'];
@@ -1827,13 +1922,40 @@ function applyImport(j,toSortie){
       });
       S.locE=[];
       S.ph={};
-      SIG.forEach(([k])=>{delete S.v[k]});
+      SIG.forEach(([k])=>{delete S.v[k];delete S.v[k+'lock'];delete S.v[k+'n']});
       S.rooms.forEach(r=>{delete S.v[r.id+'.done']});
       if(!S.v.dent&&S.v.date)S.v.dent=S.v.date;
-      delete S.v.rdv;delete S.v.date;delete S.v.heure;
+      delete S.v.rdv;delete S.v.date;delete S.v.heure;delete S.v.heurefin;delete S.v.com;
+      delete S.v['gen.done'];delete S.v['cpt.done'];delete S.v['equi.done'];delete S.v['inv.done'];delete S.v['ann.done'];delete S.v['cles.done'];delete S.v['net.done'];delete S.v['sig.done'];
+    }
+    if(mode==='entree'){
+      // Préparer une entrée : conserve le bien / client / structure
+      S.v.sensE=true;delete S.v.sensS;
+      ['ent','entem','entte','entrep','sor','sorem','sorte','sorrep','nadr','ncp','nville'].forEach(k=>delete S.v[k]);
+      S.locE=[];S.locS=[];
+      S.ph={};
+      SIG.forEach(([k])=>{delete S.v[k];delete S.v[k+'lock'];if(k!=='sgX')delete S.v[k+'n']});
+      if(!keepStates){
+        // Effacer les états et observations des pièces
+        const roomIds=new Set(S.rooms.map(r=>r.id));
+        Object.keys(S.v).forEach(k=>{
+          const rid=k.split('.')[0];
+          if(roomIds.has(rid)||k.startsWith('sn')||k.startsWith('wcs')||k.startsWith('wcg'))delete S.v[k];
+          if(/\.done$/.test(k))delete S.v[k];
+        });
+        S.x={};S.san={};S.iv=[];
+      }else{
+        // Conserver états/observations, seulement décocher « terminé »
+        Object.keys(S.v).forEach(k=>{if(/\.done$/.test(k))delete S.v[k]});
+      }
+      S.baseline=null;S.chif=null;
+      delete S.v.rdv;delete S.v.date;delete S.v.heure;delete S.v.heurefin;delete S.v.dent;delete S.v.com;
+      delete S.v.net;delete S.v.netgb;
+      // Compteurs : garder n°/emplacement, vider index et état
+      (S.cp||[]).forEach(c=>{const k='cp'+c.id;delete S.v[k+'a'];delete S.v[k+'b'];delete S.v[k+'svc'];delete S.v[k+'obs']});
     }
     S.tab='gen';render();save();savePh();
-    msg(toSortie?'Repris pour la sortie — relis chaque pièce':'EDL rouvert');
+    msg(mode==='sortie'?'Repris pour la sortie — relis chaque pièce':mode==='entree'?(keepStates?'Préparé pour l’entrée — états des pièces conservés':'Préparé pour l’entrée — états des pièces effacés'):'EDL rouvert');
   }catch(e){
     console.error(e);
     msg('Import impossible — fichier illisible ou incompatible');
@@ -1867,6 +1989,8 @@ $('#imp').onchange=async e=>{
     <p class="lg">Choisis selon l’usage de cet EDL.</p>
     <div class="act" style="flex-direction:column;align-items:stretch">
       <button class="btn p sm" data-act="impSortie">Préparer la sortie<br><span style="font-weight:400;font-size:12px">Locataire entrant → sortant, photos et signatures effacées, N° RDV/date/heure vidés</span></button>
+      <button class="btn p sm" data-act="impEntreeKeep">Préparer l’entrée — conserver les états<br><span style="font-weight:400;font-size:12px">Conserve le bien, le client, les états et observations des pièces ; efface locataires, photos et signatures</span></button>
+      <button class="btn p sm" data-act="impEntreeClear">Préparer l’entrée — effacer les états<br><span style="font-weight:400;font-size:12px">Conserve le bien et le client ; efface états, observations, locataires, photos et signatures</span></button>
       <button class="btn sm" data-act="impAsis">Modifier cet EDL tel quel<br><span style="font-weight:400;font-size:12px">Rien n’est modifié, y compris photos et signatures</span></button>
       <button class="btn d sm" data-act="impCancel">Annuler</button>
     </div>`);
