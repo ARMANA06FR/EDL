@@ -194,7 +194,7 @@ const TPL={
 };
 const GEN=[
 ['Rendez-vous',[['statut','Statut',['Professionnel de l’immobilier','Bailleur social','Propriétaire bailleur','Locataire']],['client','Client'],['cliente','E-mail client'],['clientte','Téléphone client'],['rdv','N° RDV'],['date','Date','date'],['heure','Heure','time'],['cadr','Adresse du client'],['ccp','Code postal'],['cville','Ville']]],
-['Type de bien',[['meub','',['Résidentiel','Professionnel','Annexe','Agricole','Terrain']],['sousType','Catégorie'],['prop','Nom du propriétaire'],['typ','Type (T2, T3…)'],['etage','Étage'],['digi','Digicode'],['hp','H/plafond'],['adr','Adresse du logement'],['cp','Code postal'],['ville','Ville'],['inv','Inventaire',['À établir','À contrôler','À ignorer']]]],
+['Type de bien',[['meub','Type de bien',['Résidentiel','Professionnel','Annexe','Agricole','Terrain']],['sousType','Catégorie'],['prop','Nom du propriétaire'],['typ','Type (T2, T3…)'],['etage','Étage'],['digi','Digicode'],['hp','H/plafond'],['adr','Adresse du logement'],['cp','Code postal'],['ville','Ville'],['inv','Inventaire',['À établir','À contrôler','À ignorer','Vide']]]],
 ['Locataires',[['ent','Locataire entrant'],['entem','E-mail entrant'],['entte','Téléphone entrant'],['sor','Locataire sortant'],['sorem','E-mail sortant'],['sorte','Téléphone sortant'],['nadr','Nouvelle adresse du sortant'],['ncp','Code postal'],['nville','Ville']]]];
 const SOUSTYPES={
   'Résidentiel':['Appartement','Maison','Villa','Chambre meublée','Logement étudiant'],
@@ -948,11 +948,14 @@ function fld([k,l,t]){
     const opts=SOUSTYPES[S.v.meub]||[];
     return `<label class="f">${esc(l||'Catégorie')}<select data-k="sousType"><option value="">—</option>${opts.map(o=>`<option${S.v.sousType===o?' selected':''}>${esc(o)}</option>`).join('')}</select></label>`;
   }
-  if(Array.isArray(t))return `<div class="seg">${l?`<span>${esc(l)}</span>`:''}${t.map(o=>chip(k,o,o)).join('')}</div>`;
+  if(Array.isArray(t)){
+    if(MULTI_KEYS.has(k))return `<div class="seg">${l?`<span>${esc(l)}</span>`:''}${t.map(o=>chip(k,o,o)).join('')}</div>`;
+    return `<label class="f">${esc(l||k)}<select data-k="${esc(k)}"><option value="">—</option>${t.map(o=>`<option${S.v[k]===o?' selected':''}>${esc(o)}</option>`).join('')}</select></label>`;
+  }
   if(t==='textarea'||/Obs/i.test(l||''))return `<label class="f" style="grid-column:1/-1">${esc(l)}<textarea class="ob" rows="2" data-k="${k}" placeholder="${esc(l)}">${esc(S.v[k]||'')}</textarea></label>`;
   return `<label class="f">${esc(l)}<input data-k="${k}" type="${t||'text'}" value="${esc(S.v[k]||'')}"></label>`;
 }
-const groups=G=>G.map(([t,f])=>`<h3>${esc(t)}</h3><div class="g">${f.map(fld).join('')}</div>`).join('');
+const groups=G=>G.map(([t,f])=>`<div class="it"><div class="hd"><b>${esc(t)}</b></div><div class="g">${f.map(fld).join('')}</div></div>`).join('');
 
 /* Rendu conditionnel de l’onglet Équipements */
 function renderEqui(){
@@ -968,82 +971,83 @@ function renderEqui(){
   const showEcsEntretien=ecsModes.length>0&&!ecsModes.every(m=>['Collectif','Produite par la chaudière / PAC'].includes(m));
 
   let h='<h2>Équipements</h2>';
+  const equiBlock=(title,body)=>`<div class="it"><div class="hd"><b>${esc(title)}</b></div><div class="g">${body}</div></div>`;
 
   // --- Chauffage ---
-  h+='<h3>Chauffage</h3><div class="g">';
-  h+=fld(['chfType','Type d’installation',['Individuel','Collectif','Mixte']]);
-  h+=fld(['chfEnergie','Énergie principale',['Électricité','Gaz de réseau','Fioul','Bois / granulés','Pompe à chaleur','Réseau de chaleur','GPL (citerne)','Autre']]);
+  let ch='';
+  ch+=fld(['chfType','Type d’installation',['Individuel','Collectif','Mixte']]);
+  ch+=fld(['chfEnergie','Énergie principale',['Électricité','Gaz de réseau','Fioul','Bois / granulés','Pompe à chaleur','Réseau de chaleur','GPL (citerne)','Autre']]);
   if(showIndiv||isPac||energies.length){
-    h+=fld(['chfAppareil','Appareil principal',['Chaudière','Poêle / insert','Radiateurs / convecteurs','Plancher chauffant','PAC air/air','PAC air/eau','PAC géothermie','Autre']]);
+    ch+=fld(['chfAppareil','Appareil principal',['Chaudière','Poêle / insert','Radiateurs / convecteurs','Plancher chauffant','PAC air/air','PAC air/eau','PAC géothermie','Autre']]);
   }
   if(showChfDetails){
-    h+=fld(['chfMarque','Marque / modèle']);
-    h+=fld(['chfPuissance','Puissance (kW)']);
-    h+=fld(['chfNb','Nombre d’appareils principaux']);
+    ch+=fld(['chfMarque','Marque / modèle']);
+    ch+=fld(['chfPuissance','Puissance (kW)']);
+    ch+=fld(['chfNb','Nombre d’appareils principaux']);
   }
   if(combustible||isPac){
-    h+=fld(['chfEntretien','Certificat d’entretien',['Oui','Non','Non présenté']]);
-    if(v.chfEntretien==='Oui')h+=fld(['chfEntretienDate','Daté du','date']);
-    h+=fld(['chfRamonage','Certificat de ramonage',['Oui','Non','Non concerné','Non présenté']]);
-    if(v.chfRamonage==='Oui')h+=fld(['chfRamonageDate','Daté du','date']);
+    ch+=fld(['chfEntretien','Certificat d’entretien',['Oui','Non','Non présenté']]);
+    if(v.chfEntretien==='Oui')ch+=fld(['chfEntretienDate','Daté du','date']);
+    ch+=fld(['chfRamonage','Certificat de ramonage',['Oui','Non','Non concerné','Non présenté']]);
+    if(v.chfRamonage==='Oui')ch+=fld(['chfRamonageDate','Daté du','date']);
   }
   if(isFioul){
-    h+=fld(['chfCuve','Niveau cuve fioul (litres)']);
-    h+=fld(['chfCuveEtat','État de la cuve',['Bon','Corrosion visible','Fuite / doute','Non vérifié']]);
+    ch+=fld(['chfCuve','Niveau cuve fioul (litres)']);
+    ch+=fld(['chfCuveEtat','État de la cuve',['Bon','Corrosion visible','Fuite / doute','Non vérifié']]);
   }
-  h+=fld(['chfObs','Observations chauffage','textarea']);
-  h+='</div>';
+  ch+=fld(['chfObs','Observations chauffage','textarea']);
+  h+=equiBlock('Chauffage',ch);
 
   // --- ECS ---
-  h+='<h3>Eau chaude sanitaire (ECS)</h3><div class="g">';
-  h+=fld(['ecsMode','Mode de production',['Ballon électrique (cumulus)','Chauffe-eau gaz','Chauffe-eau thermodynamique','Solaire (CESI)','Produite par la chaudière / PAC','Collectif','Instantané électrique','Autre']]);
-  h+=fld(['ecsMarque','Marque / modèle']);
-  h+=fld(['ecsCapacite','Capacité (litres)']);
-  h+=fld(['ecsAnnee','Année approx.']);
+  let ecs='';
+  ecs+=fld(['ecsMode','Mode de production',['Ballon électrique (cumulus)','Chauffe-eau gaz','Chauffe-eau thermodynamique','Solaire (CESI)','Produite par la chaudière / PAC','Collectif','Instantané électrique','Autre']]);
+  ecs+=fld(['ecsMarque','Marque / modèle']);
+  ecs+=fld(['ecsCapacite','Capacité (litres)']);
+  ecs+=fld(['ecsAnnee','Année approx.']);
   if(showEcsEntretien){
-    h+=fld(['ecsEntretien','Certificat d’entretien ECS',['Oui','Non','Non concerné','Non présenté']]);
-    if(v.ecsEntretien==='Oui')h+=fld(['ecsEntretienDate','Daté du','date']);
+    ecs+=fld(['ecsEntretien','Certificat d’entretien ECS',['Oui','Non','Non concerné','Non présenté']]);
+    if(v.ecsEntretien==='Oui')ecs+=fld(['ecsEntretienDate','Daté du','date']);
   }
-  h+=fld(['ecsObs','Observations ECS','textarea']);
-  h+='</div>';
+  ecs+=fld(['ecsObs','Observations ECS','textarea']);
+  h+=equiBlock('Eau chaude sanitaire (ECS)',ecs);
 
   // --- DAAF ---
-  h+='<h3>Détecteurs de fumée (DAAF)</h3><div class="g">';
-  h+=fld(['daaf','Présence DAAF',['Oui','Non','Non vérifié']]);
+  let daaf='';
+  daaf+=fld(['daaf','Présence DAAF',['Oui','Non','Non vérifié']]);
   if(showDaafDetails){
-    h+=fld(['daafNb','Nombre de détecteurs']);
-    h+=fld(['daafEmpl','Emplacements']);
-    h+=fld(['daafPile','État des piles / alimentation',['OK','À changer','Absent','Non vérifié']]);
-    h+=fld(['daafDate','Date de mise en service / remplacement','date']);
+    daaf+=fld(['daafNb','Nombre de détecteurs']);
+    daaf+=fld(['daafEmpl','Emplacements']);
+    daaf+=fld(['daafPile','État des piles / alimentation',['OK','À changer','Absent','Non vérifié']]);
+    daaf+=fld(['daafDate','Date de mise en service / remplacement','date']);
   }
-  h+=fld(['daafObs','Observations DAAF','textarea']);
-  h+='</div>';
+  daaf+=fld(['daafObs','Observations DAAF','textarea']);
+  h+=equiBlock('Détecteurs de fumée (DAAF)',daaf);
 
   // --- Sécurité ---
-  h+='<h3>Sécurité</h3><div class="g">';
-  h+=fld(['secItems','Éléments',['Alarme','Centrale','Clavier','Sirène','Détecteur de mouvement','Coupure d’urgence électrique']]);
-  if(multiVal('secItems').includes('Détecteur de mouvement'))h+=fld(['secDetNb','Nombre de détecteurs de mouvement']);
-  h+=fld(['secObs','Observations sécurité','textarea']);
-  h+='</div>';
+  let sec='';
+  sec+=fld(['secItems','Éléments',['Alarme','Centrale','Clavier','Sirène','Détecteur de mouvement','Coupure d’urgence électrique']]);
+  if(multiVal('secItems').includes('Détecteur de mouvement'))sec+=fld(['secDetNb','Nombre de détecteurs de mouvement']);
+  sec+=fld(['secObs','Observations sécurité','textarea']);
+  h+=equiBlock('Sécurité',sec);
 
   // --- Incendie ---
-  h+='<h3>Incendie</h3><div class="g">';
-  h+=fld(['incItems','Éléments',['Extincteur','Plan d’évacuation','BAES (Bloc Autonome d’Éclairage de Sécurité)','Boîtier d’urgence incendie','Registre de sécurité','Clé universelle d’intervention PK','RIA (Robinet d’Incendie Armé)']]);
+  let incb='';
+  incb+=fld(['incItems','Éléments',['Extincteur','Plan d’évacuation','BAES (Bloc Autonome d’Éclairage de Sécurité)','Boîtier d’urgence incendie','Registre de sécurité','Clé universelle d’intervention PK','RIA (Robinet d’Incendie Armé)']]);
   {
     const inc=multiVal('incItems');
-    if(inc.some(x=>x.startsWith('Extincteur')))h+=fld(['incExtNb','Nombre d’extincteurs']);
-    if(inc.some(x=>x.startsWith('BAES')))h+=fld(['incBaesNb','Nombre de BAES']);
-    if(inc.some(x=>x.startsWith('RIA')))h+=fld(['incRiaNb','Nombre de RIA']);
+    if(inc.some(x=>x.startsWith('Extincteur')))incb+=fld(['incExtNb','Nombre d’extincteurs']);
+    if(inc.some(x=>x.startsWith('BAES')))incb+=fld(['incBaesNb','Nombre de BAES']);
+    if(inc.some(x=>x.startsWith('RIA')))incb+=fld(['incRiaNb','Nombre de RIA']);
   }
-  h+=fld(['incObs','Observations incendie','textarea']);
-  h+='</div>';
+  incb+=fld(['incObs','Observations incendie','textarea']);
+  h+=equiBlock('Incendie',incb);
 
   // --- Internet ---
-  h+='<h3>Internet</h3><div class="g">';
-  h+=fld(['netItems','Éléments',['Box internet','Borne wifi','Baie de brassage']]);
-  if(multiVal('netItems').includes('Borne wifi'))h+=fld(['netWifiNb','Nombre de bornes wifi']);
-  h+=fld(['netObs','Observations internet','textarea']);
-  h+='</div>';
+  let net='';
+  net+=fld(['netItems','Éléments',['Box internet','Borne wifi','Baie de brassage']]);
+  if(multiVal('netItems').includes('Borne wifi'))net+=fld(['netWifiNb','Nombre de bornes wifi']);
+  net+=fld(['netObs','Observations internet','textarea']);
+  h+=equiBlock('Internet',net);
 
   h+=photoBlock('equi','Photos équipements');
   h+=`<div class="act"><button class="btn ${S.v['equi.done']?'p':''} sm" data-act="donebtn" data-r="equi">${S.v['equi.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
@@ -1314,13 +1318,15 @@ function renderCore(){
     const genRL=GEN.filter(g=>g[0]!=='Locataires');
     const repField=(k,lab)=>{
       const open=!!(S.v[k]||S.v['_show_'+k]);
-      if(!open)return `<div style="margin:4px 0 8px"><button type="button" class="btn sm" data-act="showrep" data-k="${k}">+ Représentant(s) (société / association)</button></div>`;
-      return `<label class="f" style="grid-column:1/-1;margin-bottom:8px">${esc(lab)}<input data-k="${k}" value="${esc(S.v[k]||'')}" placeholder="Nom(s) et prénom(s) du (des) représentant(s) présent(s)"></label>`;
+      if(!open)return `<div style="margin:4px 0 0"><button type="button" class="btn sm" data-act="showrep" data-k="${k}">+ Représentant(s) (société / association)</button></div>`;
+      return `<label class="f" style="grid-column:1/-1">${esc(lab)}<input data-k="${k}" value="${esc(S.v[k]||'')}" placeholder="Nom(s) et prénom(s) du (des) représentant(s) présent(s)"></label>`;
     };
-    h=`<h2>Constat d’état des lieux</h2><div class="seg"><span>Type d’état des lieux</span><button class="c${S.v.sensE?' on':''}" data-k="sensE" data-t="1">Entrant</button><button class="c${S.v.sensS?' on':''}" data-k="sensS" data-t="1">Sortant</button></div>${groups(genRL)}`;
-    h+=repField('clientrep','Représentant(s) du client');
-    if(!sO)h+=`<h3 class="strong">Locataire entrant</h3><div class="g">${[['ent','Nom'],['entem','E-mail'],['entte','Téléphone']].map(fld).join('')}</div>`+repField('entrep','Représentant(s) du locataire entrant');
-    if(!eO)h+=`<h3 class="strong">Locataire sortant</h3><div class="g">${[['sor','Nom'],['sorem','E-mail'],['sorte','Téléphone'],['nadr','Nouvelle adresse'],['ncp','Code postal'],['nville','Ville']].map(fld).join('')}</div>`+repField('sorrep','Représentant(s) du locataire sortant');
+    h=`<h2>Constat d’état des lieux</h2>`;
+    h+=`<div class="it"><div class="hd"><b>Type d’état des lieux</b></div><div class="seg"><button class="c${S.v.sensE?' on':''}" data-k="sensE" data-t="1">Entrant</button><button class="c${S.v.sensS?' on':''}" data-k="sensS" data-t="1">Sortant</button></div></div>`;
+    h+=groups(genRL);
+    h+=`<div class="it"><div class="hd"><b>Représentant(s) du client</b></div>${repField('clientrep','Représentant(s)')}</div>`;
+    if(!sO)h+=`<div class="it"><div class="hd"><b>Locataire entrant</b></div><div class="g">${[['ent','Nom'],['entem','E-mail'],['entte','Téléphone']].map(fld).join('')}</div>${repField('entrep','Représentant(s)')}</div>`;
+    if(!eO)h+=`<div class="it"><div class="hd"><b>Locataire sortant</b></div><div class="g">${[['sor','Nom'],['sorem','E-mail'],['sorte','Téléphone'],['nadr','Nouvelle adresse'],['ncp','Code postal'],['nville','Ville']].map(fld).join('')}</div>${repField('sorrep','Représentant(s)')}</div>`;
     h+=contactsBlock();
     h+=`<div class="act"><button class="btn ${S.v['gen.done']?'p':''} sm" data-act="donebtn" data-r="gen">${S.v['gen.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
   }
@@ -1377,12 +1383,15 @@ function renderCore(){
   else if(T==='inv')h=`<h2>Inventaire du mobilier</h2><div class="g">${fld(['ive','Entrée',['Établissement','Contrôle']])}${fld(['ivs','Sortie',['Établissement','Contrôle']])}</div><datalist id="dp">${S.rooms.map(r=>`<option value="${esc(r.n)}">`).join('')}</datalist><datalist id="dd">${DD.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>${S.iv.map(ivRow).join('')}<div class="act"><button class="btn p sm" data-act="addiv">Ajouter un objet</button></div>${photoBlock('inv','Photos mobilier')}<div class="act"><button class="btn ${S.v['inv.done']?'p':''} sm" data-act="donebtn" data-r="inv">${S.v['inv.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
   else if(T==='sig'){
     const sO=S.v.sensS&&!S.v.sensE,eO=S.v.sensE&&!S.v.sensS;
+    const repFor=k=>k==='sgS'?S.v.sorrep:k==='sgE'?S.v.entrep:k==='sgP'?S.v.clientrep:'';
     const blk=([k,l,d])=>{const locked=!!S.v[k+'lock'];
       const adrFld=k==='sgX'?`<label class="f">Adresse postale<input data-k="${k}adr" value="${esc(S.v[k+'adr']||'485, chemin Thomas Garbies 06610 La Gaude')}"></label><label class="f">N° SIRET<input data-k="${k}siret" value="${esc(S.v[k+'siret']||'518 242 540 000 46')}"></label>`:'';
       const finFld=k==='sgX'?`<label class="f">Heure de fin<input data-k="heurefin" type="time" value="${esc(S.v.heurefin||'')}"></label>`:'';
-      return `<h3>${l}</h3><label class="f">Nom<input data-k="${k}n" value="${esc(nm(k,d))}"></label>${adrFld}<canvas class="sg${locked?' locked':''}" data-k="${k}"${locked?' style="pointer-events:none"':''}></canvas><div class="act">${locked?`<span class="lg">✓ Signature validée</span><button class="btn sm" data-act="unlock" data-k="${k}">Modifier</button>`:`<button class="btn sm" data-act="clr" data-k="${k}">Effacer</button><button class="btn p sm" data-act="lock" data-k="${k}">Valider la signature</button>`}</div>${finFld}`;
+      const rep=repFor(k);
+      const repFld=rep?`<div class="lg" style="margin:2px 0 8px">Représentant(s) : <strong>${esc(rep)}</strong></div>`:(k==='sgS'||k==='sgE'||k==='sgP')?`<label class="f">Représentant(s)<input data-k="${k==='sgS'?'sorrep':k==='sgE'?'entrep':'clientrep'}" value="${esc((k==='sgS'?S.v.sorrep:k==='sgE'?S.v.entrep:S.v.clientrep)||'')}" placeholder="Si société / association"></label>`:'';
+      return `<div class="it"><div class="hd"><b>${esc(l)}</b></div><label class="f">Nom<input data-k="${k}n" value="${esc(nm(k,d))}"></label>${repFld}${adrFld}<canvas class="sg${locked?' locked':''}" data-k="${k}"${locked?' style="pointer-events:none"':''}></canvas><div class="act">${locked?`<span class="lg">✓ Signature validée</span><button class="btn sm" data-act="unlock" data-k="${k}">Modifier</button>`:`<button class="btn sm" data-act="clr" data-k="${k}">Effacer</button><button class="btn p sm" data-act="lock" data-k="${k}">Valider la signature</button>`}</div>${finFld}</div>`;
     };
-    h=`<h2>Signatures</h2>${eO?'':blk(SIG[0])}${S.v.sensS?`<div class="g">${fld(['dent','Date d’entrée dans le logement','date'])}</div><label class="f">Commentaire du locataire<textarea rows="4" data-k="com">${esc(S.v.com||'')}</textarea></label>`:''}${sO?'':blk(SIG[1])}${blk(SIG[2])}${blk(SIG[3])}`;
+    h=`<h2>Signatures</h2>${eO?'':blk(SIG[0])}${S.v.sensS?`<div class="it"><div class="hd"><b>Commentaire / date d’entrée</b></div><div class="g">${fld(['dent','Date d’entrée dans le logement','date'])}</div><label class="f">Commentaire du locataire<textarea rows="4" data-k="com">${esc(S.v.com||'')}</textarea></label></div>`:''}${sO?'':blk(SIG[1])}${blk(SIG[2])}${blk(SIG[3])}`;
   }
   else{
     const r=S.rooms.find(x=>x.id===T);if(!r){S.tab='gen';return render()}
@@ -1699,7 +1708,11 @@ function recap(){
   if(S.v['cles.done'])h+=`<h2>Clés</h2><table>${S.kl.map(o=>{const k='kl'+o.id+'.';return row(o.n||'Clé',[S.v[k+'q']&&('qté '+S.v[k+'q']),S.v[k+'s'],S.v[k+'b']].filter(Boolean).join(' · '))}).join('')}${row('Total',String(total()))}${row('Observations générales',S.v.clesgb)}</table>${(S.ph.cles||[]).map(d=>`<img src="${d}">`).join('')}`;
   if(isSortant()&&S.v['net.done'])h+=`<h2>Nettoyage général</h2><table>${row('État',S.v.net)}${row('Observations',S.v.netgb)}</table>`;
   h+=`<h2>Signatures</h2><table>${row('Date d’entrée',fmtDate(S.v.dent))}${row('Commentaire du locataire',S.v.com)}</table>`;
-  SIG.forEach(([k,l,d])=>{if(S.v[k]||nm(k,d))h+=`<p>${esc(l)} ${esc(nm(k,d))}${k==='sgX'?'<br>'+esc(S.v.sgXadr||'485, chemin Thomas Garbies 06610 La Gaude')+'<br>N° SIRET '+esc(S.v.sgXsiret||'518 242 540 000 46')+(S.v.heurefin?'<br>Heure de fin : '+esc(S.v.heurefin):''):''}<br>${S.v[k]?`<img src="${S.v[k]}" style="max-width:260px;border:1px solid #999">`:''}</p>`});
+  SIG.forEach(([k,l,d])=>{
+    if(!(S.v[k]||nm(k,d)))return;
+    const rep=k==='sgS'?S.v.sorrep:k==='sgE'?S.v.entrep:k==='sgP'?S.v.clientrep:'';
+    h+=`<p>${esc(l)} ${esc(nm(k,d))}${rep?'<br>Représentant(s) : '+esc(rep):''}${k==='sgX'?'<br>'+esc(S.v.sgXadr||'485, chemin Thomas Garbies 06610 La Gaude')+'<br>N° SIRET '+esc(S.v.sgXsiret||'518 242 540 000 46')+(S.v.heurefin?'<br>Heure de fin : '+esc(S.v.heurefin):''):''}<br>${S.v[k]?`<img src="${S.v[k]}" style="max-width:260px;border:1px solid #999">`:''}</p>`;
+  });
   h+=`<h2>Légende</h2><p style="font-size:13px;color:#5d6d76">États : NV non vérifié · NF neuf · BE bon état · EU état d’usage · ME mauvais état · HS hors service<br>
     TrCh : Trous de Chevilles<br>TDH : Traces D’Habitation<br>TDHP : Traces D’Habitation Prononcées<br>DDE : Dégât Des Eaux<br>
     1 = à réparer ou changer · 2 = à nettoyer</p>`;
