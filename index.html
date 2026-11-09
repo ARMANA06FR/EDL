@@ -870,7 +870,7 @@ function renderCat(){
 let cmpShowAll=false;
 
 function fresh(){return {v:{sgXn:'ARMANA Frédéric',sgXadr:'485, chemin Thomas Garbies 06610 La Gaude',sgXsiret:'518 242 540 000 46'},rooms:[{id:'r1',n:'Entrée',t:'entree'},{id:'r2',n:'Cuisine',t:'cuisine'},{id:'r3',n:'Séjour',t:'base'},{id:'r4',n:'Chambre 1',t:'base'},{id:'r5',n:'Chambre 2',t:'base'},{id:'r6',n:'Salle de bain',t:'sdb'},{id:'r7',n:'WC',t:'wc'}],
- ph:{},tab:'gen',cp:[{id:'c1',t:'Eau',orig:1},{id:'c2',t:'Électricité',orig:1},{id:'c3',t:'Gaz',orig:1}],x:{},iv:[],san:{},
+ ph:{},tab:'gen',cp:[{id:'c1',t:'Eau',orig:1},{id:'c2',t:'Électricité',orig:1},{id:'c3',t:'Gaz',orig:1}],x:{},iv:[],san:{},locE:[],locS:[],
  an:ANN0.map((n,i)=>({id:'a'+i,n,orig:1})),kl:KEYS0.map((n,i)=>({id:'k'+i,n,orig:1})),baseline:null,chif:null}}
 let S=fresh();
 function loadLS(){
@@ -885,6 +885,8 @@ function loadLS(){
   if(!Array.isArray(S.an)||!S.an.length)S.an=fresh().an;
   if(!Array.isArray(S.kl)||!S.kl.length)S.kl=fresh().kl;
   if(!Array.isArray(S.iv))S.iv=[];
+  if(!Array.isArray(S.locE))S.locE=[];
+  if(!Array.isArray(S.locS))S.locS=[];
   if(!isObj(S.v))S.v={};
   if(!isObj(S.x))S.x={};
   if(!isObj(S.san))S.san={};
@@ -893,7 +895,7 @@ function loadLS(){
 loadLS();
 let tm;
 function msg(t){$('#st').textContent=t;clearTimeout(tm);tm=setTimeout(()=>$('#st').textContent='',2500)}
-function save(){try{localStorage.setItem('edl1',JSON.stringify({v:S.v,rooms:S.rooms,tab:S.tab,cp:S.cp,x:S.x,iv:S.iv,an:S.an,kl:S.kl,san:S.san,baseline:S.baseline,chif:S.chif}))}catch(e){msg('Sauvegarde impossible')}}
+function save(){try{localStorage.setItem('edl1',JSON.stringify({v:S.v,rooms:S.rooms,tab:S.tab,cp:S.cp,x:S.x,iv:S.iv,an:S.an,kl:S.kl,san:S.san,locE:S.locE,locS:S.locS,baseline:S.baseline,chif:S.chif}))}catch(e){msg('Sauvegarde impossible')}}
 function savePh(){try{localStorage.setItem('edl1p',JSON.stringify(S.ph))}catch(e){msg('Mémoire pleine : exporte avant de continuer')}}
 function getTheme(){try{return localStorage.getItem('edl1theme')||''}catch(e){return ''}}
 function isDarkNow(){const t=getTheme();if(t==='dark')return true;if(t==='light')return false;return matchMedia('(prefers-color-scheme:dark)').matches}
@@ -1054,9 +1056,10 @@ function renderEqui(){
   return h;
 }
 function contactsBlock(){
-  const P=[['Client',S.v.client,S.v.cliente,S.v.clientte],['Locataire entrant',S.v.ent,S.v.entem,S.v.entte],['Locataire sortant',S.v.sor,S.v.sorem,S.v.sorte]];
-  const rows=P.filter(([l,n,e,t])=>n||e||t).map(([l,n,e,t],i)=>{
-    const nk=i===0?'cliente':i===1?'entem':'sorem',tk=i===0?'clientte':i===1?'entte':'sorte';
+  const P=[['Client',S.v.client,S.v.cliente,S.v.clientte,'cliente','clientte'],['Locataire entrant',S.v.ent,S.v.entem,S.v.entte,'entem','entte'],['Locataire sortant',S.v.sor,S.v.sorem,S.v.sorte,'sorem','sorte']];
+  (S.locE||[]).forEach((o,i)=>{const p='locE'+o.id+'.';P.push(['Locataire entrant '+(i+2),S.v[p+'n'],S.v[p+'em'],S.v[p+'te'],p+'em',p+'te']);});
+  (S.locS||[]).forEach((o,i)=>{const p='locS'+o.id+'.';P.push(['Locataire sortant '+(i+2),S.v[p+'n'],S.v[p+'em'],S.v[p+'te'],p+'em',p+'te']);});
+  const rows=P.filter(([l,n,e,t])=>n||e||t).map(([l,n,e,t,nk,tk])=>{
     return `<div class="it"><b>${esc(l)}${n?' — '+esc(n):''}</b><div class="row">${e?`<button class="btn sm" data-act="copy" data-src="${nk}">Copier l’e-mail</button>`:''}${t?`<button class="btn sm" data-act="copy" data-src="${tk}">Copier le tél.</button>`:''}</div></div>`;
   }).join('');
   return rows?`<h3 class="strong">Contacts</h3>${rows}`:'';
@@ -1325,8 +1328,20 @@ function renderCore(){
     h+=`<div class="it"><div class="hd"><b>Type d’état des lieux</b></div><div class="seg"><button class="c${S.v.sensE?' on':''}" data-k="sensE" data-t="1">Entrant</button><button class="c${S.v.sensS?' on':''}" data-k="sensS" data-t="1">Sortant</button></div></div>`;
     h+=groups(genRL);
     h+=`<div class="it"><div class="hd"><b>Représentant(s) du client</b></div>${repField('clientrep','Représentant(s)')}</div>`;
-    if(!sO)h+=`<div class="it"><div class="hd"><b>Locataire entrant</b></div><div class="g">${[['ent','Nom'],['entem','E-mail'],['entte','Téléphone']].map(fld).join('')}</div>${repField('entrep','Représentant(s)')}</div>`;
-    if(!eO)h+=`<div class="it"><div class="hd"><b>Locataire sortant</b></div><div class="g">${[['sor','Nom'],['sorem','E-mail'],['sorte','Téléphone'],['nadr','Nouvelle adresse'],['ncp','Code postal'],['nville','Ville']].map(fld).join('')}</div>${repField('sorrep','Représentant(s)')}</div>`;
+    if(!sO){
+      h+=`<div class="it"><div class="hd"><b>Locataire entrant</b><span class="hd-actions"><button class="mini" data-act="duploc" data-side="E" title="Ajouter un locataire entrant">+</button></span></div><div class="g">${[['ent','Nom'],['entem','E-mail'],['entte','Téléphone']].map(fld).join('')}</div>${repField('entrep','Représentant(s)')}</div>`;
+      (S.locE||[]).forEach((o,i)=>{
+        const p='locE'+o.id+'.';
+        h+=`<div class="it"><div class="hd"><b>Locataire entrant ${i+2}</b><span class="hd-actions"><button class="mini" data-act="duploc" data-side="E" title="Ajouter un locataire entrant">+</button><button class="mini d" data-act="delloc" data-side="E" data-id="${o.id}" title="Retirer">×</button></span></div><div class="g"><label class="f">Nom<input data-k="${p}n" value="${esc(S.v[p+'n']||'')}"></label><label class="f">E-mail<input data-k="${p}em" value="${esc(S.v[p+'em']||'')}"></label><label class="f">Téléphone<input data-k="${p}te" value="${esc(S.v[p+'te']||'')}"></label></div>${repField(p+'rep','Représentant(s)')}</div>`;
+      });
+    }
+    if(!eO){
+      h+=`<div class="it"><div class="hd"><b>Locataire sortant</b><span class="hd-actions"><button class="mini" data-act="duploc" data-side="S" title="Ajouter un locataire sortant">+</button></span></div><div class="g">${[['sor','Nom'],['sorem','E-mail'],['sorte','Téléphone'],['nadr','Nouvelle adresse'],['ncp','Code postal'],['nville','Ville']].map(fld).join('')}</div>${repField('sorrep','Représentant(s)')}</div>`;
+      (S.locS||[]).forEach((o,i)=>{
+        const p='locS'+o.id+'.';
+        h+=`<div class="it"><div class="hd"><b>Locataire sortant ${i+2}</b><span class="hd-actions"><button class="mini" data-act="duploc" data-side="S" title="Ajouter un locataire sortant">+</button><button class="mini d" data-act="delloc" data-side="S" data-id="${o.id}" title="Retirer">×</button></span></div><div class="g"><label class="f">Nom<input data-k="${p}n" value="${esc(S.v[p+'n']||'')}"></label><label class="f">E-mail<input data-k="${p}em" value="${esc(S.v[p+'em']||'')}"></label><label class="f">Téléphone<input data-k="${p}te" value="${esc(S.v[p+'te']||'')}"></label><label class="f">Nouvelle adresse<input data-k="${p}nadr" value="${esc(S.v[p+'nadr']||'')}"></label><label class="f">Code postal<input data-k="${p}ncp" value="${esc(S.v[p+'ncp']||'')}"></label><label class="f">Ville<input data-k="${p}nville" value="${esc(S.v[p+'nville']||'')}"></label></div>${repField(p+'rep','Représentant(s)')}</div>`;
+      });
+    }
     h+=contactsBlock();
     h+=`<div class="act"><button class="btn ${S.v['gen.done']?'p':''} sm" data-act="donebtn" data-r="gen">${S.v['gen.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
   }
@@ -1537,6 +1552,17 @@ document.addEventListener('click',e=>{
   if(d.act==='modalcancel'){window._modalOk=null;hideModal();return}
   if(d.act==='modalok'){const fn=window._modalOk;window._modalOk=null;hideModal();if(fn)fn();return}
   if(d.act==='showrep'){S.v['_show_'+d.k]=true;render();save();return}
+  if(d.act==='duploc'){
+    const id=uid();
+    if(d.side==='E'){(S.locE=S.locE||[]).push({id});}
+    else{(S.locS=S.locS||[]).push({id});}
+    render();save();return;
+  }
+  if(d.act==='delloc'){
+    if(d.side==='E')S.locE=(S.locE||[]).filter(x=>x.id!==d.id);
+    else S.locS=(S.locS||[]).filter(x=>x.id!==d.id);
+    render();save();return;
+  }
 });
 function onIn(e){
   const t=e.target;
@@ -1690,7 +1716,10 @@ function recap(){
   const tbl=G=>G.map(([t,f])=>`<h2>${esc(t)}</h2><table>${f.map(([k,l,typ])=>row(l,typ==='date'?fmtDate(S.v[k]):fmtVal(S.v[k]))).join('')}</table>`).join('');
   const typ=[S.v.sensE&&'Entrant',S.v.sensS&&'Sortant'].filter(Boolean).join(' + ')||'—';
   const repRows=[S.v.clientrep&&row('Représentant(s) client',S.v.clientrep),S.v.entrep&&row('Représentant(s) locataire entrant',S.v.entrep),S.v.sorrep&&row('Représentant(s) locataire sortant',S.v.sorrep)].filter(Boolean).join('');
-  let h=`<div class="hdband"><span class="brand">EDL 06 IMMO</span><span class="sub">Constat d’état des lieux</span><span class="subname">Frédéric ARMANA</span><span class="subsiren">N° SIREN 518 242 540</span></div><table>${row('Type d’état des lieux',typ)}</table>${tbl(GEN)}${repRows?`<table>${repRows}</table>`:''}<h2>Compteurs</h2><table>${S.cp.map(c=>{const k='cp'+c.id,l=MT[c.t];const parts=[S.v[k+'svc'],S.v[k+'a']&&(l[0]+' : '+S.v[k+'a']),l[1]&&S.v[k+'b']&&(l[1]+' : '+S.v[k+'b']),S.v[k+'obs']&&('Obs. : '+S.v[k+'obs'])].filter(Boolean);return row(c.t+(S.v[k+'n']?' n° '+S.v[k+'n']:'')+(S.v[k+'e']?' ('+S.v[k+'e']+')':''),parts.join(' — '))}).join('')}</table>${(S.ph.cpt||[]).map(d=>`<img src="${d}">`).join('')}${tbl(CPT)}`;
+  let extraLoc='';
+  (S.locE||[]).forEach((o,i)=>{const p='locE'+o.id+'.';const parts=[S.v[p+'n'],S.v[p+'em'],S.v[p+'te'],S.v[p+'rep']&&('Rep. : '+S.v[p+'rep'])].filter(Boolean);if(parts.length)extraLoc+=row('Locataire entrant '+(i+2),parts.join(' · '));});
+  (S.locS||[]).forEach((o,i)=>{const p='locS'+o.id+'.';const parts=[S.v[p+'n'],S.v[p+'em'],S.v[p+'te'],S.v[p+'nadr'],S.v[p+'ncp'],S.v[p+'nville'],S.v[p+'rep']&&('Rep. : '+S.v[p+'rep'])].filter(Boolean);if(parts.length)extraLoc+=row('Locataire sortant '+(i+2),parts.join(' · '));});
+  let h=`<div class="hdband"><span class="brand">EDL 06 IMMO</span><span class="sub">Constat d’état des lieux</span><span class="subname">Frédéric ARMANA</span><span class="subsiren">N° SIREN 518 242 540</span></div><table>${row('Type d’état des lieux',typ)}</table>${tbl(GEN)}${(repRows||extraLoc)?`<table>${repRows}${extraLoc}</table>`:''}<h2>Compteurs</h2><table>${S.cp.map(c=>{const k='cp'+c.id,l=MT[c.t];const parts=[S.v[k+'svc'],S.v[k+'a']&&(l[0]+' : '+S.v[k+'a']),l[1]&&S.v[k+'b']&&(l[1]+' : '+S.v[k+'b']),S.v[k+'obs']&&('Obs. : '+S.v[k+'obs'])].filter(Boolean);return row(c.t+(S.v[k+'n']?' n° '+S.v[k+'n']:'')+(S.v[k+'e']?' ('+S.v[k+'e']+')':''),parts.join(' — '))}).join('')}</table>${(S.ph.cpt||[]).map(d=>`<img src="${d}">`).join('')}${tbl(CPT)}`;
   const line=(p,key,def)=>{const [n,o,cn,chk,dp,cond]=def,k=p+'.'+key,s=S.v[k+'s'],b=S.v[k+'b'];
     const ty=[S.v[k+'o'],S.v[k+'o2'],...(cn||[]).map((c,j)=>S.v[k+'c'+j]?c+' '+S.v[k+'c'+j]:''),...(chk||[]).map((c,j)=>S.v[k+'x'+j]?c:''),cond&&S.v[k+'cc']?cond.label+' '+S.v[k+'cc']:''].filter(Boolean).join(', ');
     if(!(s||b||ty||S.v[k+'t']||S.v[k+'1']||S.v[k+'2']))return '';
@@ -1756,7 +1785,7 @@ $('#shr').onclick=()=>confirmIfIncomplete('partager',doShare);
 $('#rcls').onclick=()=>{$('#recap').classList.remove('show');$('#recap').innerHTML='';$('#rcls').style.display='none'};
 $('#expj').onclick=async()=>{
   const name='EDL_'+(S.v.date||new Date().toISOString().slice(0,10))+'.json';
-  const data=JSON.stringify({v:S.v,rooms:S.rooms,cp:S.cp,x:S.x,iv:S.iv,an:S.an,kl:S.kl,ph:S.ph,san:S.san,baseline:S.baseline,chif:S.chif});
+  const data=JSON.stringify({v:S.v,rooms:S.rooms,cp:S.cp,x:S.x,iv:S.iv,an:S.an,kl:S.kl,ph:S.ph,san:S.san,locE:S.locE,locS:S.locS,baseline:S.baseline,chif:S.chif});
   try{const d=window.claude&&await claude.use('downloads');if(d){await d.save({filename:name,data});return}}catch(e){}
   const a=document.createElement('a');a.href='data:application/json,'+encodeURIComponent(data);a.download=name;a.click();
 };
@@ -1775,14 +1804,28 @@ function applyImport(j,toSortie){
   const x=isObj(j.x)?j.x:{};
   const san=isObj(j.san)?j.san:{};
   const ph=isObj(j.ph)?j.ph:{};
+  const locE=Array.isArray(j.locE)?j.locE:[];
+  const locS=Array.isArray(j.locS)?j.locS:[];
   try{
-    const newBaseline=toSortie?clone({v,rooms,x,san,iv,kl}):(isObj(j.baseline)?clone(j.baseline):null);
-    S.v=v;S.rooms=rooms;S.cp=cp;S.x=x;S.iv=iv;S.san=san;S.an=an;S.kl=kl;S.ph=ph;
+    const newBaseline=toSortie?clone({v,rooms,x,san,iv,kl,locE,locS}):(isObj(j.baseline)?clone(j.baseline):null);
+    S.v=v;S.rooms=rooms;S.cp=cp;S.x=x;S.iv=iv;S.san=san;S.an=an;S.kl=kl;S.ph=ph;S.locE=locE;S.locS=locS;
     S.baseline=newBaseline;S.chif=isObj(j.chif)?j.chif:null;
     if(toSortie){
       S.v.sensS=true;delete S.v.sensE;
       if(S.v.ent)S.v.sor=S.v.ent;if(S.v.entem)S.v.sorem=S.v.entem;if(S.v.entte)S.v.sorte=S.v.entte;
-      delete S.v.ent;delete S.v.entem;delete S.v.entte;
+      if(S.v.entrep)S.v.sorrep=S.v.entrep;
+      delete S.v.ent;delete S.v.entem;delete S.v.entte;delete S.v.entrep;
+      // Extras entrants → sortants
+      S.locS=(S.locE||[]).map(o=>{
+        const p='locE'+o.id+'.',np='locS'+o.id+'.';
+        if(S.v[p+'n'])S.v[np+'n']=S.v[p+'n'];
+        if(S.v[p+'em'])S.v[np+'em']=S.v[p+'em'];
+        if(S.v[p+'te'])S.v[np+'te']=S.v[p+'te'];
+        if(S.v[p+'rep'])S.v[np+'rep']=S.v[p+'rep'];
+        delete S.v[p+'n'];delete S.v[p+'em'];delete S.v[p+'te'];delete S.v[p+'rep'];
+        return {id:o.id};
+      });
+      S.locE=[];
       S.ph={};
       SIG.forEach(([k])=>{delete S.v[k]});
       S.rooms.forEach(r=>{delete S.v[r.id+'.done']});
