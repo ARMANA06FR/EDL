@@ -111,8 +111,8 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 .ph button{position:absolute;top:2px;right:2px;border:0;background:#000a;color:#fff;border-radius:50%;width:24px;height:24px}
 .ph button.ph-save{right:28px;background:#0e6d8ccc;font-size:14px;line-height:24px}
 .kg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
-canvas.sg{width:100%;height:225px;background:#fff;border:1px solid var(--line);border-radius:8px;touch-action:none}
-canvas.sg.locked{border-color:var(--be);border-width:2px}
+canvas.sg{width:100%;height:225px;background:#f7fafc;border:2px solid var(--acc);border-radius:10px;touch-action:none;box-shadow:inset 0 1px 2px rgba(0,0,0,.04)}
+canvas.sg.locked{border-color:var(--be);background:#f0faf3}
 .act{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;align-items:center}
 .cn{grid-template-columns:repeat(auto-fit,minmax(72px,1fr));margin:6px 0}
 #qb{display:none;position:fixed;left:0;right:0;bottom:0;gap:6px;overflow-x:auto;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line);z-index:9}
@@ -187,7 +187,7 @@ const TPL={
  base:{l:'Pièce (séjour, chambre…)',i:BASE},
  chambre:{l:'Chambre',i:BASE},
  entree:{l:'Entrée',i:[['Porte palière',DMAT],['Serrure'],['Verrou',['Verrou haut','Verrou bas'],null,null,1],['Sonnette'],['Judas'],['Interphone / visiophone',['Interphone','Visiophone']],...BASE.filter(x=>x[0]!=='Porte d’accès'&&x!==SERR)]},
- cuisine:{l:'Cuisine',i:[...BASE,['Évier',['Grès','Inox','Résine','Pierre naturelle','Verre']],['Joint silicone'],['Mélangeur'],['Siphon'],['Placard sous évier',null,['Portes','Rayons','Tiroirs'],null,1],['Plan de travail'],['Robinets',null,null,['Gaz','MàL']],['Crédence',CRED],['Ventilation',VMC,null,null,1]]},
+ cuisine:{l:'Cuisine',i:[...BASE,['Meubles hauts',null,['Portes','Rayons'],null,1],['Évier',['Grès','Inox','Résine','Pierre naturelle','Verre']],['Joint silicone'],['Mélangeur'],['Siphon'],['Meuble sous évier',null,['Portes','Rayons','Tiroirs'],null,1],['Plan de travail',['Stratifié / mélaminé','Bois massif','Pierre naturelle','Autre']],['Robinets',null,null,['Gaz','MàL']],['Crédence',CRED],['Meubles bas',null,['Portes','Rayons','Tiroirs'],null,1],['Ventilation',VMC,null,null,1]]},
  sdb:{l:'Salle de bain',i:[...SDB_BASE,['Placard sous lavabo',null,['Portes','Rayons','Tiroirs'],null,1],['Miroir',null,['Nb'],null,1],['Pare-douche'],['Porte-douchette'],['Porte-serviette'],['Faïence'],['Ventilation',VMC,null,null,1]]},
  wc:{l:'WC',i:[['Porte d’accès',DMAT],SERR,['Sol',SOL],['Murs',MUR],['Plafond',PLAF],PRI,ECL,['Ventilation',VMC,null,null,1],['Faïence'],['Miroir',null,['Nb'],null,1],['Placard',null,['Portes','Rayons','Tiroirs'],null,1],['Placard sous lavabo',null,['Portes','Rayons','Tiroirs'],null,1],['Porte papier']]},
  balcon:{l:'Balcon',i:[['Sol',SOL],['Plinthe',PLI],['Façade',MUR],['Plafond',PLAF],['Placard',null,['Portes','Rayons','Tiroirs'],null,1],PRI,ECL,['Garde-corps'],['Prélat'],['Store banne']]},
@@ -346,6 +346,9 @@ const EXACT_MAP={
   'Plan de travail':['plan de travail'],
   'Placards':['placard'],
   'Placard sous évier':['Meuble évier'],
+  'Meuble sous évier':['Meuble évier'],
+  'Meubles hauts':['placard'],
+  'Meubles bas':['placard'],
   'Placard sous lavabo':['Meuble'],
   'Baignoire':['Remplacement complet Baignoire','Remplacement Baignoire','Remplacement Mitigeur/bain'],
   'Douche':['Remplacement complet bac à douche','Remplacement Mitigeur douche'],
@@ -1454,7 +1457,7 @@ function renderCore(){
   else if(T==='cli')h=renderClients();
   else if(T==='cpt')h=`<h2>Compteurs</h2>${meters()}${photoBlock('cpt')}<div class="act"><button class="btn ${S.v['cpt.done']?'p':''} sm" data-act="donebtn" data-r="cpt">${S.v['cpt.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
   else if(T==='equi')h=renderEqui();
-  else if(T==='ann')h=`<h2>Annexes</h2>${dynList(S.an,'an',(k,o)=>`<div class="g">${['Cave','Garage','Grenier'].includes(o.n)?`<label class="f">N°<input data-k="${k}num" value="${esc(S.v[k+'num']||'')}"></label>`:''}<label class="f">Porte${sel(k+'p',SS)}</label><label class="f">Serrure${sel(k+'s',SS)}</label><label class="f">Vide ou m³ à vider<input data-k="${k}m" value="${esc(S.v[k+'m']||'')}"></label></div>${ob(k)}`)}${photoBlock('ann')}<div class="act"><button class="btn ${S.v['ann.done']?'p':''} sm" data-act="donebtn" data-r="ann">${S.v['ann.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
+  else if(T==='ann')h=`<h2>Annexes</h2>${dynList(S.an,'an',(k,o)=>`<div class="g">${['Cave','Garage','Grenier'].includes(o.n)?`<label class="f">N°<input data-k="${k}num" value="${esc(S.v[k+'num']||'')}"></label>`:''}<label class="f">Porte${sel(k+'p',SS)}</label><label class="f">Serrure${sel(k+'s',SS)}</label><label class="f">m³ à vider<input data-k="${k}m" value="${esc(S.v[k+'m']||'')}"></label></div>${ob(k)}`)}${photoBlock('ann')}<div class="act"><button class="btn ${S.v['ann.done']?'p':''} sm" data-act="donebtn" data-r="ann">${S.v['ann.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
   else if(T==='cles')h=`<h2>Clés remises</h2>${dynList(S.kl,'kl',(k,o)=>{
   const special=['Émetteur','Clé magnétique'].includes(o.n);
   if(special){
@@ -1505,15 +1508,38 @@ function renderCore(){
   else if(T==='inv')h=`<h2>Inventaire du mobilier</h2><div class="g">${fld(['ive','Entrée',['Établissement','Contrôle']])}${fld(['ivs','Sortie',['Établissement','Contrôle']])}</div><datalist id="dp">${S.rooms.map(r=>`<option value="${esc(r.n)}">`).join('')}</datalist><datalist id="dd">${DD.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>${S.iv.map(ivRow).join('')}<div class="act"><button class="btn p sm" data-act="addiv">Ajouter un objet</button></div>${photoBlock('inv','Photos mobilier')}<div class="act"><button class="btn ${S.v['inv.done']?'p':''} sm" data-act="donebtn" data-r="inv">${S.v['inv.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
   else if(T==='sig'){
     const sO=S.v.sensS&&!S.v.sensE,eO=S.v.sensE&&!S.v.sensS;
-    const repFor=k=>k==='sgS'?S.v.sorrep:k==='sgE'?S.v.entrep:k==='sgP'?S.v.clientrep:'';
-    const blk=([k,l,d])=>{const locked=!!S.v[k+'lock'];
+    const blk=(k,l,defaultName,repKey)=>{
+      const locked=!!S.v[k+'lock'];
+      const nameVal=S.v[k+'n']??defaultName??'';
       const adrFld=k==='sgX'?`<label class="f">Adresse postale<input data-k="${k}adr" value="${esc(S.v[k+'adr']||'485, chemin Thomas Garbies 06610 La Gaude')}"></label><label class="f">N° SIRET<input data-k="${k}siret" value="${esc(S.v[k+'siret']||'518 242 540 000 46')}"></label>`:'';
       const finFld=k==='sgX'?`<label class="f">Heure de fin<input data-k="heurefin" type="time" value="${esc(S.v.heurefin||'')}"></label>`:'';
-      const rep=repFor(k);
-      const repFld=rep?`<div class="lg" style="margin:2px 0 8px">Représentant(s) : <strong>${esc(rep)}</strong></div>`:(k==='sgS'||k==='sgE'||k==='sgP')?`<label class="f">Représentant(s)<input data-k="${k==='sgS'?'sorrep':k==='sgE'?'entrep':'clientrep'}" value="${esc((k==='sgS'?S.v.sorrep:k==='sgE'?S.v.entrep:S.v.clientrep)||'')}" placeholder="Si société / association"></label>`:'';
-      return `<div class="it"><div class="hd"><b>${esc(l)}</b></div><label class="f">Nom<input data-k="${k}n" value="${esc(nm(k,d))}"></label>${repFld}${adrFld}<canvas class="sg${locked?' locked':''}" data-k="${k}"${locked?' style="pointer-events:none"':''}></canvas><div class="act">${locked?`<span class="lg">✓ Signature validée</span><button class="btn sm" data-act="unlock" data-k="${k}">Modifier</button>`:`<button class="btn sm" data-act="clr" data-k="${k}">Effacer</button><button class="btn p sm" data-act="lock" data-k="${k}">Valider la signature</button>`}</div>${finFld}</div>`;
+      let repFld='';
+      if(repKey){
+        const rep=S.v[repKey]||'';
+        repFld=rep?`<div class="lg" style="margin:2px 0 8px">Représentant(s) : <strong>${esc(rep)}</strong></div>`:`<label class="f">Représentant(s)<input data-k="${repKey}" value="${esc(S.v[repKey]||'')}" placeholder="Si société / association"></label>`;
+      }
+      return `<div class="it"><div class="hd"><b>${esc(l)}</b></div><label class="f">Nom<input data-k="${k}n" value="${esc(nameVal)}"></label>${repFld}${adrFld}<canvas class="sg${locked?' locked':''}" data-k="${k}"${locked?' style="pointer-events:none"':''}></canvas><div class="act">${locked?`<span class="lg">✓ Signature validée</span><button class="btn sm" data-act="unlock" data-k="${k}">Modifier</button>`:`<button class="btn sm" data-act="clr" data-k="${k}">Effacer</button><button class="btn p sm" data-act="lock" data-k="${k}">Valider la signature</button>`}</div>${finFld}</div>`;
     };
-    h=`<h2>Signatures</h2>${eO?'':blk(SIG[0])}${S.v.sensS?`<div class="it"><div class="hd"><b>Commentaire / date d’entrée</b></div><div class="g">${fld(['dent','Date d’entrée dans le logement','date'])}</div><label class="f">Commentaire du locataire<textarea rows="4" data-k="com">${esc(S.v.com||'')}</textarea></label></div>`:''}${sO?'':blk(SIG[1])}${blk(SIG[2])}${blk(SIG[3])}`;
+    h=`<h2>Signatures</h2>`;
+    // Locataires sortants (principal + extras)
+    if(!eO){
+      h+=blk('sgS','Locataire sortant / représentant',S.v.sor||'','sorrep');
+      (S.locS||[]).forEach((o,i)=>{
+        const p='locS'+o.id+'.';
+        h+=blk('sgSx'+o.id,'Locataire sortant '+(i+2)+' / représentant',S.v[p+'n']||'',p+'rep');
+      });
+    }
+    if(S.v.sensS)h+=`<div class="it"><div class="hd"><b>Commentaire / date d’entrée</b></div><div class="g">${fld(['dent','Date d’entrée dans le logement','date'])}</div><label class="f">Commentaire du locataire<textarea rows="4" data-k="com">${esc(S.v.com||'')}</textarea></label></div>`;
+    // Locataires entrants (principal + extras)
+    if(!sO){
+      h+=blk('sgE','Locataire entrant / représentant',S.v.ent||'','entrep');
+      (S.locE||[]).forEach((o,i)=>{
+        const p='locE'+o.id+'.';
+        h+=blk('sgEx'+o.id,'Locataire entrant '+(i+2)+' / représentant',S.v[p+'n']||'',p+'rep');
+      });
+    }
+    h+=blk('sgP','Propriétaire',S.v.client||'','clientrep');
+    h+=blk('sgX','Expert EDL 06 IMMO',S.v.sgXn||'ARMANA Frédéric','');
     h+=`<div class="act done-act"><button class="btn ${S.v['sig.done']?'p':''} sm done-btn" data-act="donebtn" data-r="sig">${S.v['sig.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
   }
   else{
@@ -1522,13 +1548,14 @@ function renderCore(){
     if(r.t==='balcon')h+=`<label class="f">Pièce associée${sel(r.id+'.assoc',S.rooms.filter(x=>x.id!==r.id).map(x=>x.n))}</label>`;
     h+=`<p class="lg">NV non vérifié · NF neuf · BE bon état · EU état d’usage · ME mauvais état · HS hors service ${isSortant()?'· 1 à changer/réparer · 2 à nettoyer':''}</p>`;
     h+=roomItems(r);
-    h+=`<div class="act"><input id="xn" placeholder="Nouvelle ligne (ex. Rosier, Store…)" style="flex:1"><button class="btn sm" data-act="addx" data-r="${r.id}">Ajouter une ligne</button></div>`;
+    if(r.t!=='sdb'&&r.t!=='wc')h+=`<div class="act"><input id="xn" placeholder="Nouvelle ligne (ex. Rosier, Store…)" style="flex:1"><button class="btn sm" data-act="addx" data-r="${r.id}">Ajouter une ligne</button></div>`;
     if(r.t==='sdb')h+=san(r.id)+wcCard(r.id);
     if(r.t==='wc'){
       h+=wcCard(r.id);
       h+=sanItem('wcs'+r.id+'.','Lave-main',SC_LAV,'',r.id);
       (S.san[r.id]||[]).forEach(eid=>{h+=sanItem('sn'+r.id+'.x'+eid+'.','Lave-main',SC_LAV,`<button class="mini d" data-act="delsan" data-r="${r.id}" data-id="${eid}" title="Retirer">×</button>`,r.id)});
     }
+    if(r.t==='sdb'||r.t==='wc')h+=`<div class="act"><input id="xn" placeholder="Nouvelle ligne (ex. Rosier, Store…)" style="flex:1"><button class="btn sm" data-act="addx" data-r="${r.id}">Ajouter une ligne</button></div>`;
     h+=photoBlock(r.id);
     h+=`<div class="act"><button class="btn ${S.v[r.id+'.done']?'p':''} sm" data-act="donebtn" data-r="${r.id}">${S.v[r.id+'.done']?'✓ Pièce terminée':'Marquer la pièce comme terminée'}</button></div>`;
     h+=`<h3>Ajouter une pièce</h3><div class="act"><select id="nt" style="width:auto">${Object.entries(TPL).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join('')}</select><button class="btn sm" data-act="add">Ajouter</button><button class="btn d sm" data-act="del" data-r="${r.id}">Supprimer cette pièce</button></div>`;
@@ -1873,10 +1900,16 @@ function recap(){
   if(S.v['cles.done'])h+=`<h2>Clés</h2><table>${S.kl.map(o=>{const k='kl'+o.id+'.';return row(o.n||'Clé',[S.v[k+'q']&&('qté '+S.v[k+'q']),S.v[k+'s'],S.v[k+'b']].filter(Boolean).join(' · '))}).join('')}${row('Total',String(total()))}${row('Observations générales',S.v.clesgb)}</table>${(S.ph.cles||[]).map(d=>`<img src="${d}">`).join('')}`;
   if(isSortant()&&S.v['net.done'])h+=`<h2>Nettoyage général</h2><table>${row('État',S.v.net)}${row('Observations',S.v.netgb)}</table>`;
   h+=`<h2>Signatures</h2><table>${row('Date d’entrée',fmtDate(S.v.dent))}${row('Commentaire du locataire',S.v.com)}</table>`;
-  SIG.forEach(([k,l,d])=>{
-    if(!(S.v[k]||nm(k,d)))return;
-    const rep=k==='sgS'?S.v.sorrep:k==='sgE'?S.v.entrep:k==='sgP'?S.v.clientrep:'';
-    h+=`<p>${esc(l)} ${esc(nm(k,d))}${rep?'<br>Représentant(s) : '+esc(rep):''}${k==='sgX'?'<br>'+esc(S.v.sgXadr||'485, chemin Thomas Garbies 06610 La Gaude')+'<br>N° SIRET '+esc(S.v.sgXsiret||'518 242 540 000 46')+(S.v.heurefin?'<br>Heure de fin : '+esc(S.v.heurefin):''):''}<br>${S.v[k]?`<img src="${S.v[k]}" style="max-width:260px;border:1px solid #999">`:''}</p>`;
+  const sigList=[];
+  sigList.push(['sgS','Locataire sortant / représentant',S.v.sgSn??S.v.sor??'',S.v.sorrep]);
+  (S.locS||[]).forEach((o,i)=>{const p='locS'+o.id+'.';sigList.push(['sgSx'+o.id,'Locataire sortant '+(i+2)+' / représentant',S.v['sgSx'+o.id+'n']??S.v[p+'n']??'',S.v[p+'rep']]);});
+  sigList.push(['sgE','Locataire entrant / représentant',S.v.sgEn??S.v.ent??'',S.v.entrep]);
+  (S.locE||[]).forEach((o,i)=>{const p='locE'+o.id+'.';sigList.push(['sgEx'+o.id,'Locataire entrant '+(i+2)+' / représentant',S.v['sgEx'+o.id+'n']??S.v[p+'n']??'',S.v[p+'rep']]);});
+  sigList.push(['sgP','Propriétaire',S.v.sgPn??S.v.client??'',S.v.clientrep]);
+  sigList.push(['sgX','Expert EDL 06 IMMO',S.v.sgXn||'ARMANA Frédéric','']);
+  sigList.forEach(([k,l,name,rep])=>{
+    if(!(S.v[k]||name))return;
+    h+=`<p>${esc(l)} ${esc(name)}${rep?'<br>Représentant(s) : '+esc(rep):''}${k==='sgX'?'<br>'+esc(S.v.sgXadr||'485, chemin Thomas Garbies 06610 La Gaude')+'<br>N° SIRET '+esc(S.v.sgXsiret||'518 242 540 000 46')+(S.v.heurefin?'<br>Heure de fin : '+esc(S.v.heurefin):''):''}<br>${S.v[k]?`<img src="${S.v[k]}" style="max-width:260px;border:1px solid #999">`:''}</p>`;
   });
   h+=`<h2>Légende</h2><p style="font-size:13px;color:#5d6d76">États : NV non vérifié · NF neuf · BE bon état · EU état d’usage · ME mauvais état · HS hors service<br>
     TrCh : Trous de Chevilles<br>TDH : Traces D’Habitation<br>TDHP : Traces D’Habitation Prononcées<br>DDE : Dégât Des Eaux<br>
@@ -1962,7 +1995,9 @@ function applyImport(j,mode,keepStates){
       });
       S.locE=[];
       S.ph={};
-      SIG.forEach(([k])=>{delete S.v[k];delete S.v[k+'lock'];delete S.v[k+'n']});
+      const clearSig=k=>{delete S.v[k];delete S.v[k+'lock'];delete S.v[k+'n']};
+      SIG.forEach(([k])=>clearSig(k));
+      Object.keys(S.v).forEach(k=>{if(/^sgS|^sgE/.test(k)&&k.includes('x'))delete S.v[k]});
       S.rooms.forEach(r=>{delete S.v[r.id+'.done']});
       if(!S.v.dent&&S.v.date)S.v.dent=S.v.date;
       delete S.v.rdv;delete S.v.date;delete S.v.heure;delete S.v.heurefin;delete S.v.com;
@@ -1975,6 +2010,7 @@ function applyImport(j,mode,keepStates){
       S.locE=[];S.locS=[];
       S.ph={};
       SIG.forEach(([k])=>{delete S.v[k];delete S.v[k+'lock'];if(k!=='sgX')delete S.v[k+'n']});
+      Object.keys(S.v).forEach(k=>{if(/^(sgSx|sgEx)/.test(k))delete S.v[k]});
       if(!keepStates){
         // Effacer les états et observations des pièces
         const roomIds=new Set(S.rooms.map(r=>r.id));
