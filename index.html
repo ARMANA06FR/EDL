@@ -193,8 +193,9 @@ const TPL={
  ext:{l:'Jardin / extérieur',i:[['Pelouse'],['Allées'],['Haies',['≤ 2 m','> 2 m']],['Terrasses'],['Arbres / plantes'],['Façade'],['Auvent'],['Pergolas'],PRI,ECL,['Grillage'],['Murs de clôture'],['Portail d’entrée'],['Autre portail'],['Divers']]}
 };
 const GEN=[
-['Rendez-vous',[['statut','Statut',['Professionnel de l’immobilier','Bailleur social','Propriétaire bailleur','Locataire']],['client','Client'],['cliente','E-mail client'],['clientte','Téléphone client'],['rdv','N° RDV'],['date','Date','date'],['heure','Heure','time'],['cadr','Adresse du client'],['ccp','Code postal'],['cville','Ville']]],
-['Type de bien',[['meub','Type de bien',['Résidentiel','Professionnel','Annexe','Agricole','Terrain']],['sousType','Catégorie'],['prop','Nom du propriétaire'],['typ','Type (T2, T3…)'],['etage','Étage'],['digi','Digicode'],['hp','H/plafond'],['adr','Adresse du logement'],['cp','Code postal'],['ville','Ville'],['inv','Inventaire',['À établir','À contrôler','À ignorer','Vide']]]],
+['Client',[['statut','Statut',['Professionnel de l’immobilier','Bailleur social','Propriétaire bailleur','Locataire']],['client','Client'],['cliente','E-mail client'],['clientte','Téléphone client'],['cadr','Adresse du client'],['ccp','Code postal'],['cville','Ville']]],
+['Rendez-vous',[['rdv','N° RDV'],['date','Date','date'],['heure','Heure','time'],['adr','Adresse du logement'],['cp','Code postal'],['ville','Ville']]],
+['Type de bien',[['meub','Type de bien',['Résidentiel','Professionnel','Annexe','Agricole','Terrain']],['sousType','Catégorie'],['prop','Nom du propriétaire'],['typ','Type (T2, T3…)'],['etage','Étage'],['digi','Digicode'],['hp','H/plafond'],['inv','Inventaire',['À établir','À contrôler','À ignorer','Vide']]]],
 ['Locataires',[['ent','Locataire entrant'],['entem','E-mail entrant'],['entte','Téléphone entrant'],['sor','Locataire sortant'],['sorem','E-mail sortant'],['sorte','Téléphone sortant'],['nadr','Nouvelle adresse du sortant'],['ncp','Code postal'],['nville','Ville']]]];
 const SOUSTYPES={
   'Résidentiel':['Appartement','Maison','Villa','Chambre meublée','Logement étudiant'],
@@ -1383,24 +1384,43 @@ function renderCore(){
   tabs();const a=$('#app'),T=S.tab;let h='';
   if(T==='gen'){
     const sO=S.v.sensS&&!S.v.sensE,eO=S.v.sensE&&!S.v.sensS;
-    const genRL=GEN.filter(g=>g[0]!=='Locataires');
     const repField=(k,lab)=>{
       const open=!!(S.v[k]||S.v['_show_'+k]);
       if(!open)return `<div style="margin:4px 0 0"><button type="button" class="btn sm" data-act="showrep" data-k="${k}">+ Représentant(s) (société / association)</button></div>`;
       return `<label class="f" style="grid-column:1/-1">${esc(lab)}<input data-k="${k}" value="${esc(S.v[k]||'')}" placeholder="Nom(s) et prénom(s) du (des) représentant(s) présent(s)"></label>`;
     };
     h=`<h2>Constat d’état des lieux</h2>`;
-    h+=`<div class="it"><div class="hd"><b>Type d’état des lieux</b></div><div class="seg"><button class="c${S.v.sensE?' on':''}" data-k="sensE" data-t="1">Entrant</button><button class="c${S.v.sensS?' on':''}" data-k="sensS" data-t="1">Sortant</button></div></div>`;
-    h+=groups(genRL);
+    // Type d'état des lieux + inventaire
+    h+=`<div class="it"><div class="hd"><b>Type d’état des lieux</b></div>
+      <div class="seg"><button class="c${S.v.sensE?' on':''}" data-k="sensE" data-t="1">Entrant</button><button class="c${S.v.sensS?' on':''}" data-k="sensS" data-t="1">Sortant</button></div>
+      <div class="g" style="margin-top:8px">${fld(['inv','Inventaire',['À établir','À contrôler','À ignorer','Vide']])}</div>
+    </div>`;
+    // Client
+    h+=`<div class="it"><div class="hd"><b>Client</b></div><div class="g">
+      ${fld(['statut','Statut',['Professionnel de l’immobilier','Bailleur social','Propriétaire bailleur','Locataire']])}
+      ${fld(['client','Client'])}${fld(['cliente','E-mail client'])}${fld(['clientte','Téléphone client'])}
+      ${fld(['cadr','Adresse du client'])}${fld(['ccp','Code postal'])}${fld(['cville','Ville'])}
+    </div>`;
     if(CLIENTS.length){
-      h+=`<div class="it"><div class="hd"><b>Depuis le répertoire clients</b></div>
-        <div class="act"><select id="cliPickGen" style="flex:1;min-width:160px"><option value="">— Choisir un client —</option>${CLIENTS.map(c=>`<option value="${c.id}">${esc(c.name||'Sans nom')}</option>`).join('')}</select>
+      h+=`<div class="act" style="margin-top:8px"><select id="cliPickGen" style="flex:1;min-width:160px"><option value="">— Depuis le répertoire —</option>${CLIENTS.map(c=>`<option value="${c.id}">${esc(c.name||'Sans nom')}</option>`).join('')}</select>
         <button class="btn p sm" data-act="cliPickUseGen">Remplir</button>
-        <button class="btn sm" data-act="gotoCli">Gérer le répertoire</button></div></div>`;
+        <button class="btn sm" data-act="gotoCli">Gérer</button></div>`;
     }else{
-      h+=`<div class="act"><button class="btn sm" data-act="gotoCli">Ouvrir le répertoire clients</button></div>`;
+      h+=`<div class="act" style="margin-top:8px"><button class="btn sm" data-act="gotoCli">Ouvrir le répertoire clients</button></div>`;
     }
-    h+=`<div class="it"><div class="hd"><b>Représentant(s) du client</b></div>${repField('clientrep','Représentant(s)')}</div>`;
+    h+=repField('clientrep','Représentant(s)')+`</div>`;
+    // Rendez-vous (+ adresse logement en dessous)
+    h+=`<div class="it"><div class="hd"><b>Rendez-vous</b></div>
+      <div class="g">${fld(['rdv','N° RDV'])}${fld(['date','Date','date'])}${fld(['heure','Heure','time'])}</div>
+      <div class="g" style="margin-top:8px">${fld(['adr','Adresse du logement'])}${fld(['cp','Code postal'])}${fld(['ville','Ville'])}</div>
+    </div>`;
+    // Type de bien
+    h+=`<div class="it"><div class="hd"><b>Type de bien</b></div><div class="g">
+      ${fld(['meub','Type de bien',['Résidentiel','Professionnel','Annexe','Agricole','Terrain']])}
+      ${fld(['sousType','Catégorie'])}${fld(['prop','Nom du propriétaire'])}${fld(['typ','Type (T2, T3…)'])}
+      ${fld(['etage','Étage'])}${fld(['digi','Digicode'])}${fld(['hp','H/plafond'])}
+    </div></div>`;
+    // Locataires
     if(!sO){
       h+=`<div class="it"><div class="hd"><b>Locataire entrant</b><span class="hd-actions"><button class="mini" data-act="duploc" data-side="E" title="Ajouter un locataire entrant">+</button></span></div><div class="g">${[['ent','Nom'],['entem','E-mail'],['entte','Téléphone']].map(fld).join('')}</div>${repField('entrep','Représentant(s)')}</div>`;
       (S.locE||[]).forEach((o,i)=>{
@@ -1409,10 +1429,16 @@ function renderCore(){
       });
     }
     if(!eO){
-      h+=`<div class="it"><div class="hd"><b>Locataire sortant</b><span class="hd-actions"><button class="mini" data-act="duploc" data-side="S" title="Ajouter un locataire sortant">+</button></span></div><div class="g">${[['sor','Nom'],['sorem','E-mail'],['sorte','Téléphone'],['nadr','Nouvelle adresse'],['ncp','Code postal'],['nville','Ville']].map(fld).join('')}</div>${repField('sorrep','Représentant(s)')}</div>`;
+      h+=`<div class="it"><div class="hd"><b>Locataire sortant</b><span class="hd-actions"><button class="mini" data-act="duploc" data-side="S" title="Ajouter un locataire sortant">+</button></span></div>
+        <div class="g">${[['sor','Nom'],['sorem','E-mail'],['sorte','Téléphone']].map(fld).join('')}</div>
+        <div class="g" style="margin-top:8px">${[['nadr','Nouvelle adresse'],['ncp','Code postal'],['nville','Ville']].map(fld).join('')}</div>
+        ${repField('sorrep','Représentant(s)')}</div>`;
       (S.locS||[]).forEach((o,i)=>{
         const p='locS'+o.id+'.';
-        h+=`<div class="it"><div class="hd"><b>Locataire sortant ${i+2}</b><span class="hd-actions"><button class="mini" data-act="duploc" data-side="S" title="Ajouter un locataire sortant">+</button><button class="mini d" data-act="delloc" data-side="S" data-id="${o.id}" title="Retirer">×</button></span></div><div class="g"><label class="f">Nom<input data-k="${p}n" value="${esc(S.v[p+'n']||'')}"></label><label class="f">E-mail<input data-k="${p}em" value="${esc(S.v[p+'em']||'')}"></label><label class="f">Téléphone<input data-k="${p}te" value="${esc(S.v[p+'te']||'')}"></label><label class="f">Nouvelle adresse<input data-k="${p}nadr" value="${esc(S.v[p+'nadr']||'')}"></label><label class="f">Code postal<input data-k="${p}ncp" value="${esc(S.v[p+'ncp']||'')}"></label><label class="f">Ville<input data-k="${p}nville" value="${esc(S.v[p+'nville']||'')}"></label></div>${repField(p+'rep','Représentant(s)')}</div>`;
+        h+=`<div class="it"><div class="hd"><b>Locataire sortant ${i+2}</b><span class="hd-actions"><button class="mini" data-act="duploc" data-side="S" title="Ajouter un locataire sortant">+</button><button class="mini d" data-act="delloc" data-side="S" data-id="${o.id}" title="Retirer">×</button></span></div>
+          <div class="g"><label class="f">Nom<input data-k="${p}n" value="${esc(S.v[p+'n']||'')}"></label><label class="f">E-mail<input data-k="${p}em" value="${esc(S.v[p+'em']||'')}"></label><label class="f">Téléphone<input data-k="${p}te" value="${esc(S.v[p+'te']||'')}"></label></div>
+          <div class="g" style="margin-top:8px"><label class="f">Nouvelle adresse<input data-k="${p}nadr" value="${esc(S.v[p+'nadr']||'')}"></label><label class="f">Code postal<input data-k="${p}ncp" value="${esc(S.v[p+'ncp']||'')}"></label><label class="f">Ville<input data-k="${p}nville" value="${esc(S.v[p+'nville']||'')}"></label></div>
+          ${repField(p+'rep','Représentant(s)')}</div>`;
       });
     }
     h+=contactsBlock();
