@@ -101,6 +101,9 @@ input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-vis
 .btn.p{background:var(--acc);color:var(--accf)}
 .btn.d{border-color:var(--hs);color:var(--hs)}
 .btn.sm{padding:6px 10px;font-size:13px}
+.act .btn[data-act="donebtn"],.done-btn{font-weight:600;border-width:2px;padding:8px 14px;font-size:14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.act .btn[data-act="donebtn"].p,.done-btn.p{box-shadow:0 1px 4px rgba(14,109,140,.25)}
+.done-act{margin-top:20px;padding-top:12px;border-top:1px solid var(--line);justify-content:center}
 .lg{font-size:13px;color:var(--mut);margin:0 0 6px}
 .ph{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
 .ph div{position:relative}
@@ -255,7 +258,7 @@ const CPT=[
   ['netObs','Observations internet']
 ]]
 ];
-const MT={'Eau':['Froide (m³)','Chaude (m³)'],'Électricité':['HP (kWh)','HC (kWh)'],'Gaz':['Index (m³)',''],'Autre':['Index 1','Index 2']};
+const MT={'Eau':['Froide (m³)','Chaude (m³)'],'Électricité':['HP (kWh)','HC (kWh)'],'Gaz':['Index (m³)',''],'Compteur calorifique':['Index (kWh)',''],'Autre':['Index 1','Index 2']};
 const SS=ST.map(x=>x[0]),SN=['Baignoire','Douche','Lavabo','Bidet'],SC=['Mél./Mitig.','Bonde','Siphon','Jt silicone','Flexible','Douchette','Inverseur'];
 const ANN0=['Boîte à lettres','Cave','Garage','Grenier'];
 const KEYS0=['Porte immeuble','Serrure principale','Verrou haut','Verrou bas','Boîte à lettres','Accès cave','Cave','Accès garage','Garage','Grenier','Porte SAS','Clé magnétique','Émetteur','Non identifiées'];
@@ -908,6 +911,7 @@ function saveClients(){try{localStorage.setItem('edl1clients',JSON.stringify(CLI
 loadClients();
 function applyClientToEDL(c){
   if(!c)return;
+  if(c.statut!=null)S.v.statut=c.statut;
   if(c.name!=null)S.v.client=c.name;
   if(c.email!=null)S.v.cliente=c.email;
   if(c.phone!=null)S.v.clientte=c.phone;
@@ -920,6 +924,7 @@ function applyClientToEDL(c){
 function clientFromEDL(){
   return {
     id:uid(),
+    statut:S.v.statut||'',
     name:S.v.client||'',
     email:S.v.cliente||'',
     phone:S.v.clientte||'',
@@ -929,6 +934,7 @@ function clientFromEDL(){
     rep:S.v.clientrep||''
   };
 }
+const CLIENT_STATUTS=['Professionnel de l’immobilier','Bailleur social','Propriétaire bailleur','Locataire'];
 function renderClients(){
   let h='<h2>Répertoire clients</h2><p class="lg">Enregistre tes clients ici pour préremplir rapidement l’onglet Général.</p>';
   h+='<div class="act"><button class="btn p sm" data-act="cliAdd">Ajouter un client</button><button class="btn sm" data-act="cliFromEdl">Enregistrer le client de cet EDL</button></div>';
@@ -941,10 +947,11 @@ function renderClients(){
       <button class="mini d" data-act="cliDel" data-id="${c.id}" title="Supprimer">×</button>
     </span></div>`;
     if(!open){
-      h+=`<div class="lg">${[c.email,c.phone,c.adr,c.cp,c.ville].filter(Boolean).map(esc).join(' · ')||'—'}${c.rep?'<br>Rep. : '+esc(c.rep):''}</div>`;
+      h+=`<div class="lg">${[c.statut,c.email,c.phone,c.adr,c.cp,c.ville].filter(Boolean).map(esc).join(' · ')||'—'}${c.rep?'<br>Rep. : '+esc(c.rep):''}</div>`;
     }else{
       h+=`<div class="g">
         <label class="f">Nom / raison sociale<input data-cli="${c.id}" data-cf="name" value="${esc(c.name||'')}"></label>
+        <label class="f">Statut<select data-cli="${c.id}" data-cf="statut"><option value="">—</option>${CLIENT_STATUTS.map(o=>`<option${c.statut===o?' selected':''}>${esc(o)}</option>`).join('')}</select></label>
         <label class="f">E-mail<input data-cli="${c.id}" data-cf="email" value="${esc(c.email||'')}"></label>
         <label class="f">Téléphone<input data-cli="${c.id}" data-cf="phone" value="${esc(c.phone||'')}"></label>
         <label class="f">Adresse<input data-cli="${c.id}" data-cf="adr" value="${esc(c.adr||'')}"></label>
@@ -1507,6 +1514,7 @@ function renderCore(){
       return `<div class="it"><div class="hd"><b>${esc(l)}</b></div><label class="f">Nom<input data-k="${k}n" value="${esc(nm(k,d))}"></label>${repFld}${adrFld}<canvas class="sg${locked?' locked':''}" data-k="${k}"${locked?' style="pointer-events:none"':''}></canvas><div class="act">${locked?`<span class="lg">✓ Signature validée</span><button class="btn sm" data-act="unlock" data-k="${k}">Modifier</button>`:`<button class="btn sm" data-act="clr" data-k="${k}">Effacer</button><button class="btn p sm" data-act="lock" data-k="${k}">Valider la signature</button>`}</div>${finFld}</div>`;
     };
     h=`<h2>Signatures</h2>${eO?'':blk(SIG[0])}${S.v.sensS?`<div class="it"><div class="hd"><b>Commentaire / date d’entrée</b></div><div class="g">${fld(['dent','Date d’entrée dans le logement','date'])}</div><label class="f">Commentaire du locataire<textarea rows="4" data-k="com">${esc(S.v.com||'')}</textarea></label></div>`:''}${sO?'':blk(SIG[1])}${blk(SIG[2])}${blk(SIG[3])}`;
+    h+=`<div class="act done-act"><button class="btn ${S.v['sig.done']?'p':''} sm done-btn" data-act="donebtn" data-r="sig">${S.v['sig.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
   }
   else{
     const r=S.rooms.find(x=>x.id===T);if(!r){S.tab='gen';return render()}
@@ -1665,12 +1673,12 @@ document.addEventListener('click',e=>{
     else S.locS=(S.locS||[]).filter(x=>x.id!==d.id);
     render();save();return;
   }
-  if(d.act==='cliAdd'){CLIENTS.push({id:uid(),name:'',email:'',phone:'',adr:'',cp:'',ville:'',rep:''});S.v['_cliEdit']=CLIENTS[CLIENTS.length-1].id;saveClients();render();return}
+  if(d.act==='cliAdd'){CLIENTS.push({id:uid(),statut:'',name:'',email:'',phone:'',adr:'',cp:'',ville:'',rep:''});S.v['_cliEdit']=CLIENTS[CLIENTS.length-1].id;saveClients();render();return}
   if(d.act==='cliFromEdl'){
     const c=clientFromEDL();
     if(!c.name&&!c.email&&!c.phone){msg('Aucun client renseigné dans l’EDL');return}
     const existing=CLIENTS.find(x=>x.name&&c.name&&x.name.toLowerCase()===c.name.toLowerCase());
-    if(existing){Object.assign(existing,{email:c.email||existing.email,phone:c.phone||existing.phone,adr:c.adr||existing.adr,cp:c.cp||existing.cp,ville:c.ville||existing.ville,rep:c.rep||existing.rep});msg('Client mis à jour dans le répertoire')}
+    if(existing){Object.assign(existing,{statut:c.statut||existing.statut,email:c.email||existing.email,phone:c.phone||existing.phone,adr:c.adr||existing.adr,cp:c.cp||existing.cp,ville:c.ville||existing.ville,rep:c.rep||existing.rep});msg('Client mis à jour dans le répertoire')}
     else{CLIENTS.push(c);msg('Client ajouté au répertoire')}
     saveClients();render();return;
   }
@@ -1758,9 +1766,15 @@ document.addEventListener('change',async e=>{
   if(t.classList.contains('selother')){
     S.v[t.dataset.k]=t.value;save();return;
   }
+  if(t.tagName==='SELECT'&&t.dataset.cli&&t.dataset.cf){
+    const c=CLIENTS.find(x=>x.id===t.dataset.cli);
+    if(c){c[t.dataset.cf]=t.value;saveClients();}
+    return;
+  }
   if(t.tagName==='SELECT'&&t.dataset.k){
     S.v[t.dataset.k]=t.value;save();
-    if(t.dataset.k==='sousType'||t.dataset.k==='meub')render();
+    const equiCondSel=['chfType','chfEnergie','chfEntretien','chfRamonage','ecsMode','ecsEntretien','daaf','secItems','incItems','netItems','sousType','meub'];
+    if(t.dataset.k==='sousType'||t.dataset.k==='meub'||(S.tab==='equi'&&equiCondSel.includes(t.dataset.k)))render();
     return;
   }
   if(t.dataset.catSelect!=null||t.getAttribute('data-cat-select')!=null){
