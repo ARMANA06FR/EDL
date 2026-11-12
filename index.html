@@ -224,7 +224,7 @@ const CPT=[
   ['chfObs','Observations chauffage']
 ]],
 ['Eau chaude sanitaire (ECS)',[
-  ['ecsMode','Mode de production',['Ballon électrique (cumulus)','Chauffe-eau gaz','Chauffe-eau thermodynamique','Solaire (CESI)','Produite par la chaudière / PAC','Collectif','Instantané électrique','Autre']],
+  ['ecsMode','Mode de production',['Chauffe-eau électrique','Chauffe-eau gaz','Chauffe-eau thermodynamique']],
   ['ecsMarque','Marque / modèle'],
   ['ecsCapacite','Capacité (litres)'],
   ['ecsAnnee','Année approx.'],
@@ -1048,7 +1048,7 @@ function renderEqui(){
   const showDaafDetails=v.daaf==='Oui';
   const showEcsIndiv=v.ecsType==='Individuel'||v.ecsType==='Mixte';
   const ecsModes=multiVal('ecsMode');
-  const showEcsEntretien=showEcsIndiv&&ecsModes.length>0&&!ecsModes.every(m=>['Collectif','Produite par la chaudière / PAC'].includes(m));
+  const showEcsEntretien=showEcsIndiv&&(ecsModes.length>0||!!v.ecsModeAutre);
 
   let h='<h2>Équipements</h2>';
   const equiBlock=(title,body)=>`<div class="it"><div class="hd"><b>${esc(title)}</b></div><div class="g">${body}</div></div>`;
@@ -1082,7 +1082,8 @@ function renderEqui(){
   let ecs='';
   ecs+=fld(['ecsType','Type d’installation',['Individuel','Collectif','Mixte']]);
   if(showEcsIndiv){
-    ecs+=fld(['ecsMode','Mode de production',['Ballon électrique (cumulus)','Chauffe-eau gaz','Chauffe-eau thermodynamique','Solaire (CESI)','Produite par la chaudière / PAC','Collectif','Instantané électrique','Autre']]);
+    ecs+=fld(['ecsMode','Mode de production',['Chauffe-eau électrique','Chauffe-eau gaz','Chauffe-eau thermodynamique']]);
+    ecs+=`<label class="f">Autre<input data-k="ecsModeAutre" value="${esc(v.ecsModeAutre||'')}" placeholder="Préciser un autre mode"></label>`;
     ecs+=fld(['ecsMarque','Marque / modèle']);
     ecs+=fld(['ecsCapacite','Capacité (litres)']);
     ecs+=fld(['ecsAnnee','Année approx.']);
