@@ -115,12 +115,6 @@ canvas.sg{width:100%;height:225px;background:#f7fafc;border:2px solid var(--acc)
 canvas.sg.locked{border-color:var(--be);background:#f0faf3}
 .act{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;align-items:center}
 .cn{grid-template-columns:repeat(auto-fit,minmax(72px,1fr));margin:6px 0}
-.pri-grid{display:flex;flex-direction:column;gap:8px;margin:8px 0}
-.pri-type{border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--card)}
-.pri-type-lab{font-weight:600;font-size:13px;margin-bottom:6px;color:var(--ink)}
-.pri-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.pri-fields .f input{width:100%;min-width:0}
-@media(max-width:380px){.pri-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
 #qb{display:none;position:fixed;left:0;right:0;bottom:0;gap:6px;overflow-x:auto;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line);z-index:9}
 #qb button{flex:none;border:1px solid var(--line);background:none;color:var(--ink);border-radius:8px;padding:8px 12px;font:inherit;font-size:14px}
 #recap{display:none}
@@ -1153,19 +1147,13 @@ const NOETAT=new Set(['Éclairage','Prises','Prises (NV)','Robinets','Robinets (
 function item(p,key,def,flags=true,dupBase){
   const [name,opts,cn,chk,dup,cond,opts2]=def,k=p+'.'+key,sortant=isSortant(),notrch=NOTRCH.has(dupBase||name),removable=key.charAt(0)==='e',noetat=NOETAT.has(dupBase||name);
   const fl=(s,l,ti)=>`<button class="c${S.v[k+s]?' on':''}" data-k="${k+s}" data-t="1"${ti?` title="${ti}"`:''}>${l}</button>`;
-  const isPrises=/^Prises/.test(dupBase||name);
-  const partial=S.v[k+'o']||S.v[k+'b']||(cn&&cn.some((c,j)=>S.v[k+'c'+j]||(isPrises&&(S.v[k+'ds'+j]||S.v[k+'me'+j]||S.v[k+'ab'+j]))))||(chk&&chk.some((c,j)=>S.v[k+'x'+j]));
+  const partial=S.v[k+'o']||S.v[k+'b']||(cn&&cn.some((c,j)=>S.v[k+'c'+j]))||(chk&&chk.some((c,j)=>S.v[k+'x'+j]));
   const warn=partial&&!S.v[k+'s'];
   const filled=!!S.v[k+'s'];
   const displayName=S.v[k+'nm']||name;
   const cnOnTitle=cn&&cn.length===1&&/^(Nb|Nombre)$/i.test(cn[0]);
   const nbFields=cnOnTitle?cn.map((c,j)=>`<span class="hd-nb"><input type="number" min="0" inputmode="numeric" placeholder="Nb" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></span>`).join(''):'';
-  const cnRow=isPrises&&cn?`<div class="pri-grid">${cn.map((c,j)=>`<div class="pri-type"><div class="pri-type-lab">${esc(c)}</div><div class="pri-fields">
-    <label class="f">Total<input type="number" min="0" inputmode="numeric" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></label>
-    <label class="f">Descel.<input type="number" min="0" inputmode="numeric" data-k="${k}ds${j}" value="${esc(S.v[k+'ds'+j]||'')}"></label>
-    <label class="f">ME<input type="number" min="0" inputmode="numeric" data-k="${k}me${j}" value="${esc(S.v[k+'me'+j]||'')}"></label>
-    <label class="f">Abs.<input type="number" min="0" inputmode="numeric" data-k="${k}ab${j}" value="${esc(S.v[k+'ab'+j]||'')}"></label>
-  </div></div>`).join('')}</div>`:(cn&&!cnOnTitle?`<div class="g cn">${cn.map((c,j)=>`<label class="f">${esc(c)}<input type="number" min="0" inputmode="numeric" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></label>`).join('')}</div>`:'');
+  const cnRow=cn&&!cnOnTitle?`<div class="g cn">${cn.map((c,j)=>`<label class="f">${esc(c)}<input type="number" min="0" inputmode="numeric" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></label>`).join('')}</div>`:'';
   const trchBtn=(!noetat&&!notrch)?`<span class="c tc-btn"><input type="number" min="0" inputmode="numeric" placeholder="TrCh" data-k="${k}t" value="${esc(S.v[k+'t']||'')}"></span>`:'';
   return `<div class="it${warn?' warn':filled?' filled':''}"><div class="hd"><input class="it-title" data-iname="${esc(p)}" data-ikey="${esc(key)}" value="${esc(displayName)}">${nbFields}<span class="hd-actions"><button class="mini" data-act="dup" data-r="${p}" data-b="${esc(dupBase??name)}" data-i="${esc(key)}" title="Ajouter une ligne ${esc(displayName)} juste en dessous">+</button>${removable?`<button class="mini d" data-act="delx" data-r="${p}" data-id="${esc(key)}" title="Retirer cette ligne">×</button>`:''}</span></div>
   ${cnRow}
@@ -1895,19 +1883,7 @@ function recap(){
   (S.locS||[]).forEach((o,i)=>{const p='locS'+o.id+'.';const parts=[S.v[p+'n'],S.v[p+'em'],S.v[p+'te'],S.v[p+'nadr'],S.v[p+'ncp'],S.v[p+'nville'],S.v[p+'rep']&&('Rep. : '+S.v[p+'rep'])].filter(Boolean);if(parts.length)extraLoc+=row('Locataire sortant '+(i+2),parts.join(' · '));});
   let h=`<div class="hdband"><span class="brand">EDL 06 IMMO</span><span class="sub">Constat d’état des lieux</span><span class="subname">Frédéric ARMANA</span><span class="subsiren">N° SIREN 518 242 540</span></div><table>${row('Type d’état des lieux',typ)}</table>${tbl(GEN)}${(repRows||extraLoc)?`<table>${repRows}${extraLoc}</table>`:''}<h2>Compteurs</h2><table>${S.cp.map(c=>{const k='cp'+c.id,l=MT[c.t];const parts=[S.v[k+'svc'],S.v[k+'a']&&(l[0]+' : '+S.v[k+'a']),l[1]&&S.v[k+'b']&&(l[1]+' : '+S.v[k+'b']),S.v[k+'obs']&&('Obs. : '+S.v[k+'obs'])].filter(Boolean);return row(c.t+(S.v[k+'n']?' n° '+S.v[k+'n']:'')+(S.v[k+'e']?' ('+S.v[k+'e']+')':''),parts.join(' — '))}).join('')}</table>${(S.ph.cpt||[]).map(d=>`<img src="${d}">`).join('')}${tbl(CPT)}`;
   const line=(p,key,def)=>{const [n,o,cn,chk,dp,cond]=def,k=p+'.'+key,s=S.v[k+'s'],b=S.v[k+'b'];
-    const isPr=/^Prises/.test(n);
-    const ty=[S.v[k+'o'],S.v[k+'o2'],...(cn||[]).map((c,j)=>{
-      if(!S.v[k+'c'+j]&&!(isPr&&(S.v[k+'ds'+j]||S.v[k+'me'+j]||S.v[k+'ab'+j])))return '';
-      let t=c+(S.v[k+'c'+j]?' '+S.v[k+'c'+j]:'');
-      if(isPr){
-        const bits=[];
-        if(S.v[k+'ds'+j])bits.push(S.v[k+'ds'+j]+' descel.');
-        if(S.v[k+'me'+j])bits.push(S.v[k+'me'+j]+' ME');
-        if(S.v[k+'ab'+j])bits.push(S.v[k+'ab'+j]+' abs.');
-        if(bits.length)t+=' ('+bits.join(', ')+')';
-      }
-      return t;
-    }),...(chk||[]).map((c,j)=>S.v[k+'x'+j]?c:''),cond&&S.v[k+'cc']?cond.label+' '+S.v[k+'cc']:''].filter(Boolean).join(', ');
+    const ty=[S.v[k+'o'],S.v[k+'o2'],...(cn||[]).map((c,j)=>S.v[k+'c'+j]?c+' '+S.v[k+'c'+j]:''),...(chk||[]).map((c,j)=>S.v[k+'x'+j]?c:''),cond&&S.v[k+'cc']?cond.label+' '+S.v[k+'cc']:''].filter(Boolean).join(', ');
     if(!(s||b||ty||S.v[k+'t']||S.v[k+'1']||S.v[k+'2']))return '';
     tick(s);if(S.v[k+'1'])cnt.r1++;if(S.v[k+'2'])cnt.r2++;
     return `<tr style="background:${STCLR[s]||''}"><td>${esc(n)}</td><td>${esc(ty)}</td><td>${esc(s||'')}</td><td>${esc(S.v[k+'t']||'')}</td><td>${S.v[k+'1']?'×':''}</td><td>${S.v[k+'2']?'×':''}</td><td>${esc(b||'')}</td></tr>`};
