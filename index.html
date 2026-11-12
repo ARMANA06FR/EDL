@@ -115,6 +115,12 @@ canvas.sg{width:100%;height:225px;background:#f7fafc;border:2px solid var(--acc)
 canvas.sg.locked{border-color:var(--be);background:#f0faf3}
 .act{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;align-items:center}
 .cn{grid-template-columns:repeat(auto-fit,minmax(72px,1fr));margin:6px 0}
+.pri-grid{display:flex;flex-direction:column;gap:8px;margin:8px 0}
+.pri-type{border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--card)}
+.pri-type-lab{font-weight:600;font-size:13px;margin-bottom:6px;color:var(--ink)}
+.pri-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.pri-fields .f input{width:100%;min-width:0}
+@media(max-width:380px){.pri-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
 #qb{display:none;position:fixed;left:0;right:0;bottom:0;gap:6px;overflow-x:auto;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line);z-index:9}
 #qb button{flex:none;border:1px solid var(--line);background:none;color:var(--ink);border-radius:8px;padding:8px 12px;font:inherit;font-size:14px}
 #recap{display:none}
@@ -173,8 +179,8 @@ const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"
 const ST=[['NV','Non vérifié','--nv'],['NF','Neuf','--nf'],['BE','Bon état','--be'],['EU','État d’usage','--eu'],['ME','Mauvais état','--me'],['HS','Hors service','--hs']];
 const SOL=['Carrelage','Marbre','Parquet','Parquet flottant','Pierre naturelle','Lino/PVC','Béton'],PLI=['Carrelage','Marbre','Bois peint','Bois verni','PVC','Goulottes'],MUR=['Crépi','Peint','Papier peint','Toile de verre','Parpaings'],PLAF=['Crépi','Peint','Papier peint','Toile de verre','Dalles polystyrène'],VMC=['VMC','Autogyre','VH','VB','VH + VB'];
 const DMAT=['Bois peint','Bois verni','Verre','Alu','Alu + verre','Métal','Autre'],CRED=['Faïence','Stratifié','Verre','Inox','Autre'],REV=['Émail','Céramique','Pierre naturelle','Composite','Verre','Béton','Autre'];
-const PRI=['Prises',null,['PC','Tel','TV','Fibre']],ECL=['Éclairage',null,['Plafonnier','Applique','Amp. EU','Amp. HS/abs','Néon','Néon HS/abs.','Fils nus']];
-const NOTRCH=new Set(['Interphone / visiophone','Serrure','Judas','Chauffage','Sonnette','Prises','Éclairage','Ventilation','Robinets','Siphon','Mélangeur','Joint silicone','Évier','Miroir','Pare-douche','Porte-douchette','Porte-serviette','Lave-main']);
+const PRI=['Prises (NV)',null,['PC','Tel','TV','Fibre']],ECL=['Éclairage',null,['Plafonnier','Applique','Amp. EU','Amp. HS/abs','Néon','Néon HS/abs.','Fils nus']];
+const NOTRCH=new Set(['Interphone / visiophone','Serrure','Judas','Chauffage','Sonnette','Prises','Prises (NV)','Éclairage','Ventilation','Robinets','Robinets (NV)','Siphon','Mélangeur','Joint silicone','Évier','Miroir','Pare-douche','Porte-douchette','Porte-serviette','Lave-main']);
 const CHAUF=['Radiateur','Convecteur','Climatisation','Télécommande','Thermostat'];
 const SERR=['Serrure / verrou',['Serrure','Verrou','Loquet'],null,null,null,{when:'Serrure',label:'Nombre de clés'}];
 const VOLM=['Bois peint','Bois verni','Alu','PVC'];
@@ -187,7 +193,7 @@ const TPL={
  base:{l:'Pièce (séjour, chambre…)',i:BASE},
  chambre:{l:'Chambre',i:BASE},
  entree:{l:'Entrée',i:[['Porte palière',DMAT],['Serrure'],['Verrou',['Verrou haut','Verrou bas'],null,null,1],['Sonnette'],['Judas'],['Interphone / visiophone',['Interphone','Visiophone']],...BASE.filter(x=>x[0]!=='Porte d’accès'&&x!==SERR)]},
- cuisine:{l:'Cuisine',i:[...BASE,['Meubles hauts',null,['Portes','Rayons'],null,1],['Évier',['Grès','Inox','Résine','Pierre naturelle','Verre']],['Joint silicone'],['Mélangeur'],['Siphon'],['Meuble sous évier',null,['Portes','Rayons','Tiroirs'],null,1],['Plan de travail',['Stratifié / mélaminé','Bois massif','Pierre naturelle','Autre']],['Robinets',null,null,['Gaz','MàL']],['Crédence',CRED],['Meubles bas',null,['Portes','Rayons','Tiroirs'],null,1],['Ventilation',VMC,null,null,1]]},
+ cuisine:{l:'Cuisine',i:[...BASE,['Meubles hauts',null,['Portes','Rayons'],null,1],['Évier',['Grès','Inox','Résine','Pierre naturelle','Verre']],['Joint silicone'],['Mélangeur'],['Siphon'],['Meuble sous évier',null,['Portes','Rayons','Tiroirs'],null,1],['Plan de travail',['Stratifié / mélaminé','Bois massif','Pierre naturelle']],['Robinets (NV)',null,null,['Gaz','MàL']],['Crédence',CRED],['Meubles bas',null,['Portes','Rayons','Tiroirs'],null,1],['Ventilation',VMC,null,null,1]]},
  sdb:{l:'Salle de bain',i:[...SDB_BASE,['Placard sous lavabo',null,['Portes','Rayons','Tiroirs'],null,1],['Miroir',null,['Nb'],null,1],['Pare-douche'],['Porte-douchette'],['Porte-serviette'],['Faïence'],['Ventilation',VMC,null,null,1]]},
  wc:{l:'WC',i:[['Porte d’accès',DMAT],SERR,['Sol',SOL],['Murs',MUR],['Plafond',PLAF],PRI,ECL,['Ventilation',VMC,null,null,1],['Faïence'],['Miroir',null,['Nb'],null,1],['Placard',null,['Portes','Rayons','Tiroirs'],null,1],['Placard sous lavabo',null,['Portes','Rayons','Tiroirs'],null,1],['Porte papier']]},
  balcon:{l:'Balcon',i:[['Sol',SOL],['Plinthe',PLI],['Façade',MUR],['Plafond',PLAF],['Placard',null,['Portes','Rayons','Tiroirs'],null,1],PRI,ECL,['Garde-corps'],['Prélat'],['Store banne']]},
@@ -876,7 +882,7 @@ function renderCat(){
 
 let cmpShowAll=false;
 
-function fresh(){return {v:{sgXn:'ARMANA Frédéric',sgXadr:'485, chemin Thomas Garbies 06610 La Gaude',sgXsiret:'518 242 540 000 46'},rooms:[{id:'r1',n:'Entrée',t:'entree'},{id:'r2',n:'Cuisine',t:'cuisine'},{id:'r3',n:'Séjour',t:'base'},{id:'r4',n:'Chambre 1',t:'base'},{id:'r5',n:'Chambre 2',t:'base'},{id:'r6',n:'Salle de bain',t:'sdb'},{id:'r7',n:'WC',t:'wc'}],
+function fresh(){return {v:{sgXn:'ARMANA Frédéric',sgXadr:'485, chemin Thomas Garbies 06610 La Gaude',sgXsiret:'518 242 540 000 46',inv:'Vide'},rooms:[{id:'r1',n:'Entrée',t:'entree'},{id:'r2',n:'Cuisine',t:'cuisine'},{id:'r3',n:'Séjour',t:'base'},{id:'r4',n:'Chambre 1',t:'base'},{id:'r5',n:'Chambre 2',t:'base'},{id:'r6',n:'Salle de bain',t:'sdb'},{id:'r7',n:'WC',t:'wc'}],
  ph:{},tab:'gen',cp:[{id:'c1',t:'Eau',orig:1},{id:'c2',t:'Électricité',orig:1},{id:'c3',t:'Gaz',orig:1}],x:{},iv:[],san:{},locE:[],locS:[],
  an:ANN0.map((n,i)=>({id:'a'+i,n,orig:1})),kl:KEYS0.map((n,i)=>({id:'k'+i,n,orig:1})),baseline:null,chif:null}}
 let S=fresh();
@@ -941,6 +947,11 @@ const CLIENT_STATUTS=['Professionnel de l’immobilier','Bailleur social','Propr
 function renderClients(){
   let h='<h2>Répertoire clients</h2><p class="lg">Enregistre tes clients ici pour préremplir rapidement l’onglet Général.</p>';
   h+='<div class="act"><button class="btn p sm" data-act="cliAdd">Ajouter un client</button><button class="btn sm" data-act="cliFromEdl">Enregistrer le client de cet EDL</button></div>';
+  if(CLIENTS.length){
+    h+=`<div class="it"><div class="hd"><b>Remplir rapidement l’EDL en cours</b></div>
+      <div class="act"><select id="cliPick" style="flex:1;min-width:160px"><option value="">— Choisir un client —</option>${CLIENTS.map(c=>`<option value="${c.id}">${esc(c.name||'Sans nom')}</option>`).join('')}</select>
+      <button class="btn p sm" data-act="cliPickUse">Appliquer à l’EDL</button></div></div>`;
+  }
   if(!CLIENTS.length)h+='<p class="lg">Aucun client enregistré pour le moment.</p>';
   CLIENTS.forEach((c,i)=>{
     const open=S.v['_cliEdit']===c.id;
@@ -965,12 +976,6 @@ function renderClients(){
     }
     h+=`</div>`;
   });
-  // Raccourci sélection rapide
-  if(CLIENTS.length){
-    h+=`<div class="it"><div class="hd"><b>Remplir rapidement l’EDL en cours</b></div>
-      <div class="act"><select id="cliPick" style="flex:1;min-width:160px"><option value="">— Choisir un client —</option>${CLIENTS.map(c=>`<option value="${c.id}">${esc(c.name||'Sans nom')}</option>`).join('')}</select>
-      <button class="btn p sm" data-act="cliPickUse">Appliquer à l’EDL</button></div></div>`;
-  }
   return h;
 }
 function getTheme(){try{return localStorage.getItem('edl1theme')||''}catch(e){return ''}}
@@ -1017,9 +1022,10 @@ const chip=(k,v,l,t,col)=>{
 if('serviceWorker' in navigator){navigator.serviceWorker.register('service-worker.js').catch(()=>{})}
 
 const sel=(k,o)=>{
+  const opts=(o||[]).filter(x=>x!=='Autre');
   const v=S.v[k]||'';
-  const inList=!v||o.includes(v);
-  return `<div class="selwrap"><select data-k="${esc(k)}" data-sel="${esc(k)}"><option value="">—</option>${o.map(x=>`<option${v===x?' selected':''}>${esc(x)}</option>`).join('')}<option value="__other__"${!inList?' selected':''}>Autre…</option></select><input class="selother" data-k="${esc(k)}" value="${!inList?esc(v):''}" placeholder="Saisir une autre option…" style="display:${!inList?'block':'none'}"></div>`;
+  const inList=!v||opts.includes(v);
+  return `<div class="selwrap"><select data-k="${esc(k)}" data-sel="${esc(k)}"><option value="">—</option>${opts.map(x=>`<option${v===x?' selected':''}>${esc(x)}</option>`).join('')}<option value="__other__"${!inList?' selected':''}>Autre…</option></select><input class="selother" data-k="${esc(k)}" value="${!inList?esc(v):''}" placeholder="Saisir une autre option…" style="display:${!inList?'block':'none'}"></div>`;
 };
 function fld([k,l,t]){
   if(k==='sousType'){
@@ -1143,18 +1149,23 @@ function contactsBlock(){
 const nm=(k,d)=>k==='sgX'?(S.v.sgXn||'ARMANA Frédéric'):(S.v[k+'n']??S.v[d]??'');
 const ob=k=>`<textarea class="ob" rows="1" data-k="${k}b" placeholder="Observations">${esc(S.v[k+'b']||'')}</textarea>`;
 const grow=t=>{t.style.height='auto';t.style.height=t.scrollHeight+'px'};
-const NOETAT=new Set(['Éclairage']),DEFNV=new Set(['Prises','Robinets']);
+const NOETAT=new Set(['Éclairage','Prises','Prises (NV)','Robinets','Robinets (NV)']);
 function item(p,key,def,flags=true,dupBase){
   const [name,opts,cn,chk,dup,cond,opts2]=def,k=p+'.'+key,sortant=isSortant(),notrch=NOTRCH.has(dupBase||name),removable=key.charAt(0)==='e',noetat=NOETAT.has(dupBase||name);
-  if(DEFNV.has(dupBase||name)&&S.v[k+'s']===undefined)S.v[k+'s']='NV';
   const fl=(s,l,ti)=>`<button class="c${S.v[k+s]?' on':''}" data-k="${k+s}" data-t="1"${ti?` title="${ti}"`:''}>${l}</button>`;
-  const partial=S.v[k+'o']||S.v[k+'b']||(cn&&cn.some((c,j)=>S.v[k+'c'+j]))||(chk&&chk.some((c,j)=>S.v[k+'x'+j]));
+  const isPrises=/^Prises/.test(dupBase||name);
+  const partial=S.v[k+'o']||S.v[k+'b']||(cn&&cn.some((c,j)=>S.v[k+'c'+j]||(isPrises&&(S.v[k+'ds'+j]||S.v[k+'me'+j]||S.v[k+'ab'+j]))))||(chk&&chk.some((c,j)=>S.v[k+'x'+j]));
   const warn=partial&&!S.v[k+'s'];
   const filled=!!S.v[k+'s'];
   const displayName=S.v[k+'nm']||name;
   const cnOnTitle=cn&&cn.length===1&&/^(Nb|Nombre)$/i.test(cn[0]);
   const nbFields=cnOnTitle?cn.map((c,j)=>`<span class="hd-nb"><input type="number" min="0" inputmode="numeric" placeholder="Nb" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></span>`).join(''):'';
-  const cnRow=cn&&!cnOnTitle?`<div class="g cn">${cn.map((c,j)=>`<label class="f">${esc(c)}<input type="number" min="0" inputmode="numeric" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></label>`).join('')}</div>`:'';
+  const cnRow=isPrises&&cn?`<div class="pri-grid">${cn.map((c,j)=>`<div class="pri-type"><div class="pri-type-lab">${esc(c)}</div><div class="pri-fields">
+    <label class="f">Total<input type="number" min="0" inputmode="numeric" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></label>
+    <label class="f">Descel.<input type="number" min="0" inputmode="numeric" data-k="${k}ds${j}" value="${esc(S.v[k+'ds'+j]||'')}"></label>
+    <label class="f">ME<input type="number" min="0" inputmode="numeric" data-k="${k}me${j}" value="${esc(S.v[k+'me'+j]||'')}"></label>
+    <label class="f">Abs.<input type="number" min="0" inputmode="numeric" data-k="${k}ab${j}" value="${esc(S.v[k+'ab'+j]||'')}"></label>
+  </div></div>`).join('')}</div>`:(cn&&!cnOnTitle?`<div class="g cn">${cn.map((c,j)=>`<label class="f">${esc(c)}<input type="number" min="0" inputmode="numeric" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></label>`).join('')}</div>`:'');
   const trchBtn=(!noetat&&!notrch)?`<span class="c tc-btn"><input type="number" min="0" inputmode="numeric" placeholder="TrCh" data-k="${k}t" value="${esc(S.v[k+'t']||'')}"></span>`:'';
   return `<div class="it${warn?' warn':filled?' filled':''}"><div class="hd"><input class="it-title" data-iname="${esc(p)}" data-ikey="${esc(key)}" value="${esc(displayName)}">${nbFields}<span class="hd-actions"><button class="mini" data-act="dup" data-r="${p}" data-b="${esc(dupBase??name)}" data-i="${esc(key)}" title="Ajouter une ligne ${esc(displayName)} juste en dessous">+</button>${removable?`<button class="mini d" data-act="delx" data-r="${p}" data-id="${esc(key)}" title="Retirer cette ligne">×</button>`:''}</span></div>
   ${cnRow}
@@ -1518,7 +1529,7 @@ function renderCore(){
         const rep=S.v[repKey]||'';
         repFld=rep?`<div class="lg" style="margin:2px 0 8px">Représentant(s) : <strong>${esc(rep)}</strong></div>`:`<label class="f">Représentant(s)<input data-k="${repKey}" value="${esc(S.v[repKey]||'')}" placeholder="Si société / association"></label>`;
       }
-      return `<div class="it"><div class="hd"><b>${esc(l)}</b></div><label class="f">Nom<input data-k="${k}n" value="${esc(nameVal)}"></label>${repFld}${adrFld}<canvas class="sg${locked?' locked':''}" data-k="${k}"${locked?' style="pointer-events:none"':''}></canvas><div class="act">${locked?`<span class="lg">✓ Signature validée</span><button class="btn sm" data-act="unlock" data-k="${k}">Modifier</button>`:`<button class="btn sm" data-act="clr" data-k="${k}">Effacer</button><button class="btn p sm" data-act="lock" data-k="${k}">Valider la signature</button>`}</div>${finFld}</div>`;
+      return `<div class="it"><div class="hd"><b>${esc(l)}</b></div><label class="f">Nom<input data-k="${k}n" value="${esc(nameVal)}"></label>${repFld}${adrFld}<div class="lg" style="margin:8px 0 4px;font-weight:600">Signature</div><canvas class="sg${locked?' locked':''}" data-k="${k}"${locked?' style="pointer-events:none"':''}></canvas><div class="act">${locked?`<span class="lg">✓ Signature validée</span><button class="btn sm" data-act="unlock" data-k="${k}">Modifier</button>`:`<button class="btn sm" data-act="clr" data-k="${k}">Effacer</button><button class="btn p sm" data-act="lock" data-k="${k}">Valider la signature</button>`}</div>${finFld}</div>`;
     };
     h=`<h2>Signatures</h2>`;
     // Locataires sortants (principal + extras)
@@ -1884,7 +1895,19 @@ function recap(){
   (S.locS||[]).forEach((o,i)=>{const p='locS'+o.id+'.';const parts=[S.v[p+'n'],S.v[p+'em'],S.v[p+'te'],S.v[p+'nadr'],S.v[p+'ncp'],S.v[p+'nville'],S.v[p+'rep']&&('Rep. : '+S.v[p+'rep'])].filter(Boolean);if(parts.length)extraLoc+=row('Locataire sortant '+(i+2),parts.join(' · '));});
   let h=`<div class="hdband"><span class="brand">EDL 06 IMMO</span><span class="sub">Constat d’état des lieux</span><span class="subname">Frédéric ARMANA</span><span class="subsiren">N° SIREN 518 242 540</span></div><table>${row('Type d’état des lieux',typ)}</table>${tbl(GEN)}${(repRows||extraLoc)?`<table>${repRows}${extraLoc}</table>`:''}<h2>Compteurs</h2><table>${S.cp.map(c=>{const k='cp'+c.id,l=MT[c.t];const parts=[S.v[k+'svc'],S.v[k+'a']&&(l[0]+' : '+S.v[k+'a']),l[1]&&S.v[k+'b']&&(l[1]+' : '+S.v[k+'b']),S.v[k+'obs']&&('Obs. : '+S.v[k+'obs'])].filter(Boolean);return row(c.t+(S.v[k+'n']?' n° '+S.v[k+'n']:'')+(S.v[k+'e']?' ('+S.v[k+'e']+')':''),parts.join(' — '))}).join('')}</table>${(S.ph.cpt||[]).map(d=>`<img src="${d}">`).join('')}${tbl(CPT)}`;
   const line=(p,key,def)=>{const [n,o,cn,chk,dp,cond]=def,k=p+'.'+key,s=S.v[k+'s'],b=S.v[k+'b'];
-    const ty=[S.v[k+'o'],S.v[k+'o2'],...(cn||[]).map((c,j)=>S.v[k+'c'+j]?c+' '+S.v[k+'c'+j]:''),...(chk||[]).map((c,j)=>S.v[k+'x'+j]?c:''),cond&&S.v[k+'cc']?cond.label+' '+S.v[k+'cc']:''].filter(Boolean).join(', ');
+    const isPr=/^Prises/.test(n);
+    const ty=[S.v[k+'o'],S.v[k+'o2'],...(cn||[]).map((c,j)=>{
+      if(!S.v[k+'c'+j]&&!(isPr&&(S.v[k+'ds'+j]||S.v[k+'me'+j]||S.v[k+'ab'+j])))return '';
+      let t=c+(S.v[k+'c'+j]?' '+S.v[k+'c'+j]:'');
+      if(isPr){
+        const bits=[];
+        if(S.v[k+'ds'+j])bits.push(S.v[k+'ds'+j]+' descel.');
+        if(S.v[k+'me'+j])bits.push(S.v[k+'me'+j]+' ME');
+        if(S.v[k+'ab'+j])bits.push(S.v[k+'ab'+j]+' abs.');
+        if(bits.length)t+=' ('+bits.join(', ')+')';
+      }
+      return t;
+    }),...(chk||[]).map((c,j)=>S.v[k+'x'+j]?c:''),cond&&S.v[k+'cc']?cond.label+' '+S.v[k+'cc']:''].filter(Boolean).join(', ');
     if(!(s||b||ty||S.v[k+'t']||S.v[k+'1']||S.v[k+'2']))return '';
     tick(s);if(S.v[k+'1'])cnt.r1++;if(S.v[k+'2'])cnt.r2++;
     return `<tr style="background:${STCLR[s]||''}"><td>${esc(n)}</td><td>${esc(ty)}</td><td>${esc(s||'')}</td><td>${esc(S.v[k+'t']||'')}</td><td>${S.v[k+'1']?'×':''}</td><td>${S.v[k+'2']?'×':''}</td><td>${esc(b||'')}</td></tr>`};
