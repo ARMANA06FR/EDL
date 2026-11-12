@@ -210,8 +210,8 @@ const SOUSTYPES={
 const CPT=[
 ['Chauffage',[
   ['chfType','Type d’installation',['Individuel','Collectif','Mixte']],
-  ['chfEnergie','Énergie principale',['Électricité','Gaz de réseau','Fioul','Bois / granulés','Pompe à chaleur','Réseau de chaleur','GPL (citerne)','Autre']],
-  ['chfAppareil','Appareil principal',['Chaudière','Poêle / insert','Radiateurs / convecteurs','Plancher chauffant','PAC air/air','PAC air/eau','PAC géothermie','Autre']],
+  ['chfEnergie','Énergie principale',['Électricité','Gaz de réseau','Fioul','Bois / granulés']],
+  ['chfAppareil','Appareil principal',['Chaudière','Poêle / insert','Radiateurs / convecteurs','Plancher chauffant','Pompe à chaleur']],
   ['chfMarque','Marque / modèle'],
   ['chfPuissance','Puissance (kW)'],
   ['chfNb','Nombre d’appareils principaux'],
@@ -1039,14 +1039,16 @@ const groups=G=>G.map(([t,f])=>`<div class="it"><div class="hd"><b>${esc(t)}</b>
 function renderEqui(){
   const v=S.v;
   const energies=multiVal('chfEnergie');
-  const showIndiv=v.chfType==='Individuel'||v.chfType==='Mixte'||!v.chfType;
-  const combustible=energies.some(e=>['Gaz de réseau','Fioul','Bois / granulés','GPL (citerne)'].includes(e));
-  const isPac=energies.includes('Pompe à chaleur');
+  const appareils=multiVal('chfAppareil');
+  const showChfIndiv=v.chfType==='Individuel'||v.chfType==='Mixte';
+  const combustible=energies.some(e=>['Gaz de réseau','Fioul','Bois / granulés'].includes(e));
+  const isPac=appareils.includes('Pompe à chaleur');
   const isFioul=energies.includes('Fioul');
-  const showChfDetails=showIndiv||combustible||isPac||energies.length>0;
+  const showChfDetails=showChfIndiv&&(combustible||isPac||energies.length>0||appareils.length>0||v.chfEnergieAutre||v.chfAppareilAutre);
   const showDaafDetails=v.daaf==='Oui';
+  const showEcsIndiv=v.ecsType==='Individuel'||v.ecsType==='Mixte';
   const ecsModes=multiVal('ecsMode');
-  const showEcsEntretien=ecsModes.length>0&&!ecsModes.every(m=>['Collectif','Produite par la chaudière / PAC'].includes(m));
+  const showEcsEntretien=showEcsIndiv&&ecsModes.length>0&&!ecsModes.every(m=>['Collectif','Produite par la chaudière / PAC'].includes(m));
 
   let h='<h2>Équipements</h2>';
   const equiBlock=(title,body)=>`<div class="it"><div class="hd"><b>${esc(title)}</b></div><div class="g">${body}</div></div>`;
@@ -1054,37 +1056,40 @@ function renderEqui(){
   // --- Chauffage ---
   let ch='';
   ch+=fld(['chfType','Type d’installation',['Individuel','Collectif','Mixte']]);
-  ch+=fld(['chfEnergie','Énergie principale',['Électricité','Gaz de réseau','Fioul','Bois / granulés','Pompe à chaleur','Réseau de chaleur','GPL (citerne)','Autre']]);
-  if(showIndiv||isPac||energies.length){
-    ch+=fld(['chfAppareil','Appareil principal',['Chaudière','Poêle / insert','Radiateurs / convecteurs','Plancher chauffant','PAC air/air','PAC air/eau','PAC géothermie','Autre']]);
-  }
-  if(showChfDetails){
+  if(showChfIndiv){
+    ch+=fld(['chfEnergie','Énergie principale',['Électricité','Gaz de réseau','Fioul','Bois / granulés']]);
+    ch+=`<label class="f">Autre<input data-k="chfEnergieAutre" value="${esc(v.chfEnergieAutre||'')}" placeholder="Préciser une autre énergie"></label>`;
+    ch+=fld(['chfAppareil','Appareil principal',['Chaudière','Poêle / insert','Radiateurs / convecteurs','Plancher chauffant','Pompe à chaleur']]);
+    ch+=`<label class="f">Autre<input data-k="chfAppareilAutre" value="${esc(v.chfAppareilAutre||'')}" placeholder="Préciser un autre appareil"></label>`;
     ch+=fld(['chfMarque','Marque / modèle']);
     ch+=fld(['chfPuissance','Puissance (kW)']);
     ch+=fld(['chfNb','Nombre d’appareils principaux']);
-  }
-  if(combustible||isPac){
-    ch+=fld(['chfEntretien','Certificat d’entretien',['Oui','Non','Non présenté']]);
-    if(v.chfEntretien==='Oui')ch+=fld(['chfEntretienDate','Daté du','date']);
-    ch+=fld(['chfRamonage','Certificat de ramonage',['Oui','Non','Non concerné','Non présenté']]);
-    if(v.chfRamonage==='Oui')ch+=fld(['chfRamonageDate','Daté du','date']);
-  }
-  if(isFioul){
-    ch+=fld(['chfCuve','Niveau cuve fioul (litres)']);
-    ch+=fld(['chfCuveEtat','État de la cuve',['Bon','Corrosion visible','Fuite / doute','Non vérifié']]);
+    if(combustible||isPac){
+      ch+=fld(['chfEntretien','Certificat d’entretien',['Oui','Non','Non présenté']]);
+      if(v.chfEntretien==='Oui')ch+=fld(['chfEntretienDate','Daté du','date']);
+      ch+=fld(['chfRamonage','Certificat de ramonage',['Oui','Non','Non concerné','Non présenté']]);
+      if(v.chfRamonage==='Oui')ch+=fld(['chfRamonageDate','Daté du','date']);
+    }
+    if(isFioul){
+      ch+=fld(['chfCuve','Niveau cuve fioul (litres)']);
+      ch+=fld(['chfCuveEtat','État de la cuve',['Bon','Corrosion visible','Fuite / doute','Non vérifié']]);
+    }
   }
   ch+=fld(['chfObs','Observations chauffage','textarea']);
   h+=equiBlock('Chauffage',ch);
 
   // --- ECS ---
   let ecs='';
-  ecs+=fld(['ecsMode','Mode de production',['Ballon électrique (cumulus)','Chauffe-eau gaz','Chauffe-eau thermodynamique','Solaire (CESI)','Produite par la chaudière / PAC','Collectif','Instantané électrique','Autre']]);
-  ecs+=fld(['ecsMarque','Marque / modèle']);
-  ecs+=fld(['ecsCapacite','Capacité (litres)']);
-  ecs+=fld(['ecsAnnee','Année approx.']);
-  if(showEcsEntretien){
-    ecs+=fld(['ecsEntretien','Certificat d’entretien ECS',['Oui','Non','Non concerné','Non présenté']]);
-    if(v.ecsEntretien==='Oui')ecs+=fld(['ecsEntretienDate','Daté du','date']);
+  ecs+=fld(['ecsType','Type d’installation',['Individuel','Collectif','Mixte']]);
+  if(showEcsIndiv){
+    ecs+=fld(['ecsMode','Mode de production',['Ballon électrique (cumulus)','Chauffe-eau gaz','Chauffe-eau thermodynamique','Solaire (CESI)','Produite par la chaudière / PAC','Collectif','Instantané électrique','Autre']]);
+    ecs+=fld(['ecsMarque','Marque / modèle']);
+    ecs+=fld(['ecsCapacite','Capacité (litres)']);
+    ecs+=fld(['ecsAnnee','Année approx.']);
+    if(showEcsEntretien){
+      ecs+=fld(['ecsEntretien','Certificat d’entretien ECS',['Oui','Non','Non concerné','Non présenté']]);
+      if(v.ecsEntretien==='Oui')ecs+=fld(['ecsEntretienDate','Daté du','date']);
+    }
   }
   ecs+=fld(['ecsObs','Observations ECS','textarea']);
   h+=equiBlock('Eau chaude sanitaire (ECS)',ecs);
@@ -1580,7 +1585,7 @@ document.addEventListener('click',e=>{
       save();return}
     else{const v=b.dataset.v;S.v[k]=S.v[k]===v?'':v;b.parentElement.querySelectorAll('.c[data-v]').forEach(x=>x.classList.toggle('on',S.v[k]===x.dataset.v));if(k==='meub'){const opts=SOUSTYPES[S.v.meub]||[];if(!opts.includes(S.v.sousType))delete S.v.sousType;render();save();return}
       // Re-render equipments tab when conditional chips change
-      const equiCond=['chfType','chfEnergie','chfEntretien','chfRamonage','ecsMode','ecsEntretien','daaf','secItems','incItems','netItems'];
+      const equiCond=['chfType','chfEnergie','chfEntretien','chfRamonage','ecsType','ecsMode','ecsEntretien','daaf','secItems','incItems','netItems'];
       if(equiCond.includes(k)&&S.tab==='equi'){render();save();return}}
     save();return}
   const a=e.target.closest('[data-act]');if(!a)return;const d=a.dataset;
@@ -1799,7 +1804,7 @@ document.addEventListener('change',async e=>{
   }
   if(t.tagName==='SELECT'&&t.dataset.k){
     S.v[t.dataset.k]=t.value;save();
-    const equiCondSel=['chfType','chfEnergie','chfEntretien','chfRamonage','ecsMode','ecsEntretien','daaf','secItems','incItems','netItems','sousType','meub'];
+    const equiCondSel=['chfType','chfEnergie','chfEntretien','chfRamonage','ecsType','ecsMode','ecsEntretien','daaf','secItems','incItems','netItems','sousType','meub'];
     if(t.dataset.k==='sousType'||t.dataset.k==='meub'||(S.tab==='equi'&&equiCondSel.includes(t.dataset.k)))render();
     return;
   }
