@@ -209,9 +209,8 @@ const SOUSTYPES={
 };
 const CPT=[
 ['Chauffage',[
-  ['chfType','Type d’installation',['Individuel','Collectif','Mixte']],
-  ['chfEnergie','Énergie principale',['Électricité','Gaz de réseau','Fioul','Bois / granulés']],
-  ['chfAppareil','Appareil principal',['Chaudière','Poêle / insert','Radiateurs / convecteurs','Plancher chauffant','Pompe à chaleur']],
+  ['chfType','Type d’installation',['Individuel','Collectif','Aucun']],
+  ['chfEnergie','Énergie',['Électrique','Gaz','Fioul','Bois/Granulés','Climatisation réversible','Autre']],
   ['chfMarque','Marque / modèle'],
   ['chfPuissance','Puissance (kW)'],
   ['chfNb','Nombre d’appareils principaux'],
@@ -224,7 +223,7 @@ const CPT=[
   ['chfObs','Observations chauffage']
 ]],
 ['Eau chaude sanitaire (ECS)',[
-  ['ecsMode','Mode de production',['Chauffe-eau électrique','Chauffe-eau gaz','Chauffe-eau thermodynamique']],
+  ['ecsMode','Mode de production',['Chauffe-eau','Chaudière','Autre']],
   ['ecsMarque','Marque / modèle'],
   ['ecsCapacite','Capacité (litres)'],
   ['ecsAnnee','Année approx.'],
@@ -876,7 +875,7 @@ function renderCat(){
 
 let cmpShowAll=false;
 
-function fresh(){return {v:{sgXn:'ARMANA Frédéric',sgXadr:'485, chemin Thomas Garbies 06610 La Gaude',sgXsiret:'518 242 540 000 46',inv:'Vide'},rooms:[{id:'r1',n:'Entrée',t:'entree'},{id:'r2',n:'Cuisine',t:'cuisine'},{id:'r3',n:'Séjour',t:'base'},{id:'r4',n:'Chambre 1',t:'base'},{id:'r5',n:'Chambre 2',t:'base'},{id:'r6',n:'Salle de bain',t:'sdb'},{id:'r7',n:'WC',t:'wc'}],
+function fresh(){return {v:{sgXn:'ARMANA Frédéric',sgXadr:'485, chemin Thomas Garbies 06610 La Gaude',sgXsiret:'518 242 540 000 46'},rooms:[{id:'r1',n:'Entrée',t:'entree'},{id:'r2',n:'Cuisine',t:'cuisine'},{id:'r3',n:'Séjour',t:'base'},{id:'r4',n:'Chambre 1',t:'base'},{id:'r5',n:'Chambre 2',t:'base'},{id:'r6',n:'Salle de bain',t:'sdb'},{id:'r7',n:'WC',t:'wc'}],
  ph:{},tab:'gen',cp:[{id:'c1',t:'Eau',orig:1},{id:'c2',t:'Électricité',orig:1},{id:'c3',t:'Gaz',orig:1}],x:{},iv:[],san:{},locE:[],locS:[],
  an:ANN0.map((n,i)=>({id:'a'+i,n,orig:1})),kl:KEYS0.map((n,i)=>({id:'k'+i,n,orig:1})),baseline:null,chif:null}}
 let S=fresh();
@@ -997,7 +996,7 @@ if(menuBtn&&menuDrop){
 const isSortant=()=>!!S.v.sensS;
 
 /* Clés autorisant la sélection multiple (plusieurs chips actifs) */
-const MULTI_KEYS=new Set(['chfEnergie','chfAppareil','ecsMode','secItems','incItems','netItems']);
+const MULTI_KEYS=new Set(['chfEnergie','chfAppareil','ecsEnergie','ecsMode','secItems','incItems','netItems']);
 function isMultiOn(k,v){
   const cur=S.v[k];
   if(Array.isArray(cur))return cur.includes(v);
@@ -1015,10 +1014,13 @@ const chip=(k,v,l,t,col)=>{
 };
 if('serviceWorker' in navigator){navigator.serviceWorker.register('service-worker.js').catch(()=>{})}
 
-const sel=(k,o)=>{
+const sel=(k,o,noOther)=>{
   const opts=(o||[]).filter(x=>x!=='Autre');
   const v=S.v[k]||'';
   const inList=!v||opts.includes(v);
+  if(noOther){
+    return `<div class="selwrap"><select data-k="${esc(k)}"><option value="">—</option>${opts.map(x=>`<option${v===x?' selected':''}>${esc(x)}</option>`).join('')}</select></div>`;
+  }
   return `<div class="selwrap"><select data-k="${esc(k)}" data-sel="${esc(k)}"><option value="">—</option>${opts.map(x=>`<option${v===x?' selected':''}>${esc(x)}</option>`).join('')}<option value="__other__"${!inList?' selected':''}>Autre…</option></select><input class="selother" data-k="${esc(k)}" value="${!inList?esc(v):''}" placeholder="Saisir une autre option…" style="display:${!inList?'block':'none'}"></div>`;
 };
 function fld([k,l,t]){
@@ -1039,32 +1041,28 @@ const groups=G=>G.map(([t,f])=>`<div class="it"><div class="hd"><b>${esc(t)}</b>
 function renderEqui(){
   const v=S.v;
   const energies=multiVal('chfEnergie');
-  const appareils=multiVal('chfAppareil');
-  const showChfIndiv=v.chfType==='Individuel'||v.chfType==='Mixte';
-  const combustible=energies.some(e=>['Gaz de réseau','Fioul','Bois / granulés'].includes(e));
-  const isPac=appareils.includes('Pompe à chaleur');
+  const showChfIndiv=v.chfType==='Individuel';
+  const combustible=energies.some(e=>['Gaz','Fioul','Bois/Granulés'].includes(e));
   const isFioul=energies.includes('Fioul');
-  const showChfDetails=showChfIndiv&&(combustible||isPac||energies.length>0||appareils.length>0||v.chfEnergieAutre||v.chfAppareilAutre);
   const showDaafDetails=v.daaf==='Oui';
-  const showEcsIndiv=v.ecsType==='Individuel'||v.ecsType==='Mixte';
+  const showEcsIndiv=v.ecsType==='Individuel';
+  const ecsEnergies=multiVal('ecsEnergie');
   const ecsModes=multiVal('ecsMode');
-  const showEcsEntretien=showEcsIndiv&&(ecsModes.length>0||!!v.ecsModeAutre);
+  const showEcsEntretien=showEcsIndiv&&ecsModes.length>0;
 
   let h='<h2>Équipements</h2>';
   const equiBlock=(title,body)=>`<div class="it"><div class="hd"><b>${esc(title)}</b></div><div class="g">${body}</div></div>`;
+  const typeSeg=(k,label)=>`<div class="seg"><span>${esc(label)}</span>${['Individuel','Collectif','Aucun'].map(o=>chip(k,o,o)).join('')}</div>`;
+  const energieSeg=(k,label,opts)=>`<div class="seg"><span>${esc(label)}</span>${opts.map(o=>chip(k,o,o)).join('')}</div>`;
+  const CHF_NRG=['Électrique','Gaz','Fioul','Bois/Granulés','Climatisation réversible','Autre'];
+  const ECS_NRG=['Électrique','Gaz','Fioul','Bois/Granulés','Solaire','Autre'];
 
   // --- Chauffage ---
   let ch='';
-  ch+=fld(['chfType','Type d’installation',['Individuel','Collectif','Mixte']]);
+  ch+=typeSeg('chfType','Type d’installation');
   if(showChfIndiv){
-    ch+=fld(['chfEnergie','Énergie principale',['Électricité','Gaz de réseau','Fioul','Bois / granulés']]);
-    ch+=`<label class="f">Autre<input data-k="chfEnergieAutre" value="${esc(v.chfEnergieAutre||'')}" placeholder="Préciser une autre énergie"></label>`;
-    ch+=fld(['chfAppareil','Appareil principal',['Chaudière','Poêle / insert','Radiateurs / convecteurs','Plancher chauffant','Pompe à chaleur']]);
-    ch+=`<label class="f">Autre<input data-k="chfAppareilAutre" value="${esc(v.chfAppareilAutre||'')}" placeholder="Préciser un autre appareil"></label>`;
-    ch+=fld(['chfMarque','Marque / modèle']);
-    ch+=fld(['chfPuissance','Puissance (kW)']);
-    ch+=fld(['chfNb','Nombre d’appareils principaux']);
-    if(combustible||isPac){
+    ch+=energieSeg('chfEnergie','Énergie',CHF_NRG);
+    if(combustible){
       ch+=fld(['chfEntretien','Certificat d’entretien',['Oui','Non','Non présenté']]);
       if(v.chfEntretien==='Oui')ch+=fld(['chfEntretienDate','Daté du','date']);
       ch+=fld(['chfRamonage','Certificat de ramonage',['Oui','Non','Non concerné','Non présenté']]);
@@ -1080,13 +1078,12 @@ function renderEqui(){
 
   // --- ECS ---
   let ecs='';
-  ecs+=fld(['ecsType','Type d’installation',['Individuel','Collectif','Mixte']]);
+  ecs+=typeSeg('ecsType','Type d’installation');
   if(showEcsIndiv){
-    ecs+=fld(['ecsMode','Mode de production',['Chauffe-eau électrique','Chauffe-eau gaz','Chauffe-eau thermodynamique']]);
-    ecs+=`<label class="f">Autre<input data-k="ecsModeAutre" value="${esc(v.ecsModeAutre||'')}" placeholder="Préciser un autre mode"></label>`;
+    ecs+=energieSeg('ecsEnergie','Énergie',ECS_NRG);
+    ecs+=fld(['ecsMode','Mode de production',['Chauffe-eau','Chaudière','Autre']]);
     ecs+=fld(['ecsMarque','Marque / modèle']);
     ecs+=fld(['ecsCapacite','Capacité (litres)']);
-    ecs+=fld(['ecsAnnee','Année approx.']);
     if(showEcsEntretien){
       ecs+=fld(['ecsEntretien','Certificat d’entretien ECS',['Oui','Non','Non concerné','Non présenté']]);
       if(v.ecsEntretien==='Oui')ecs+=fld(['ecsEntretienDate','Daté du','date']);
@@ -1154,8 +1151,8 @@ function item(p,key,def,flags=true,dupBase){
   const [name,opts,cn,chk,dup,cond,opts2]=def,k=p+'.'+key,sortant=isSortant(),notrch=NOTRCH.has(dupBase||name),removable=key.charAt(0)==='e',noetat=NOETAT.has(dupBase||name);
   const fl=(s,l,ti)=>`<button class="c${S.v[k+s]?' on':''}" data-k="${k+s}" data-t="1"${ti?` title="${ti}"`:''}>${l}</button>`;
   const partial=S.v[k+'o']||S.v[k+'b']||(cn&&cn.some((c,j)=>S.v[k+'c'+j]))||(chk&&chk.some((c,j)=>S.v[k+'x'+j]));
-  const warn=partial&&!S.v[k+'s'];
-  const filled=!!S.v[k+'s'];
+  const warn=!noetat&&partial&&!S.v[k+'s'];
+  const filled=noetat?!!partial:!!S.v[k+'s'];
   const displayName=S.v[k+'nm']||name;
   const cnOnTitle=cn&&cn.length===1&&/^(Nb|Nombre)$/i.test(cn[0]);
   const nbFields=cnOnTitle?cn.map((c,j)=>`<span class="hd-nb"><input type="number" min="0" inputmode="numeric" placeholder="Nb" data-k="${k}c${j}" value="${esc(S.v[k+'c'+j]||'')}"></span>`).join(''):'';
@@ -1193,7 +1190,7 @@ function roomItems(r){
   return h;
 }
 const SC_LAV=SC.filter(c=>!['Flexible','Douchette','Inverseur'].includes(c));
-const sanItem=(k,n,cols,extra,roomId)=>{cols=cols||SC;const display=S.v[k+'nm']||n;return `<div class="it${S.v[k+'s']?' filled':''}"><div class="hd"><input class="it-title" style="font-weight:600;border:0;background:none;padding:2px;flex:1;min-width:0" data-k="${k}nm" value="${esc(display)}"><button class="mini" data-act="dupsan" data-r="${roomId||''}" title="Dupliquer juste en dessous">+</button>${extra||''}</div><div class="g"><label class="f">Revêtement${sel(k+'r',REV)}</label><label class="f">État${sel(k+'s',SS)}</label>${cols.map((c,j)=>`<label class="f">${c}${sel(k+j,SS)}</label>`).join('')}</div>${ob(k)}</div>`};
+const sanItem=(k,n,cols,extra,roomId)=>{cols=cols||SC;const display=S.v[k+'nm']||n;return `<div class="it${S.v[k+'s']?' filled':''}"><div class="hd"><input class="it-title" style="font-weight:600;border:0;background:none;padding:2px;flex:1;min-width:0" data-k="${k}nm" value="${esc(display)}"><button class="mini" data-act="dupsan" data-r="${roomId||''}" title="Dupliquer juste en dessous">+</button>${extra||''}</div><div class="g"><label class="f">Revêtement${sel(k+'r',REV)}</label><label class="f">État${sel(k+'s',SS,true)}</label>${cols.map((c,j)=>`<label class="f">${c}${sel(k+j,SS,true)}</label>`).join('')}</div>${ob(k)}</div>`};
 const san=id=>{
   let h='<h3>Sanitaires</h3>';
   SN.forEach((n,i)=>{
@@ -1202,7 +1199,7 @@ const san=id=>{
   (S.san[id]||[]).forEach(eid=>{h+=sanItem('sn'+id+'.x'+eid+'.','Lavabo',null,`<button class="mini d" data-act="delsan" data-r="${id}" data-id="${eid}" title="Retirer">×</button>`,id)});
   return h;
 };
-const wcCard=id=>{const k='wcg'+id+'.',filled=WCF.some((c,j)=>S.v[k+j]);const display=S.v[k+'nm']||'WC';return `<div class="it${filled?' filled':''}"><div class="hd"><input class="it-title" style="font-weight:600;border:0;background:none;padding:2px;flex:1;min-width:0" data-k="${k}nm" value="${esc(display)}"><button class="mini" data-act="dupwc" data-r="${id}" title="Dupliquer le bloc WC">+</button></div><div class="g">${WCF.map((c,j)=>`<label class="f">${c}${sel(k+j,SS)}</label>`).join('')}</div>${ob(k)}</div>`};
+const wcCard=id=>{const k='wcg'+id+'.',filled=WCF.some((c,j)=>S.v[k+j]);const display=S.v[k+'nm']||'WC';return `<div class="it${filled?' filled':''}"><div class="hd"><input class="it-title" style="font-weight:600;border:0;background:none;padding:2px;flex:1;min-width:0" data-k="${k}nm" value="${esc(display)}"><button class="mini" data-act="dupwc" data-r="${id}" title="Dupliquer le bloc WC">+</button></div><div class="g">${WCF.map((c,j)=>`<label class="f">${c}${sel(k+j,SS,true)}</label>`).join('')}</div>${ob(k)}</div>`};
 const meters=()=>`<h3>Compteurs</h3>`+S.cp.map(c=>{const k='cp'+c.id,l=MT[c.t],f=(s,t)=>`<label class="f">${t}<input data-k="${k+s}" value="${esc(S.v[k+s]||'')}"></label>`;
   const svc=`<div class="seg"><span>État</span><button class="c${S.v[k+'svc']==='En service'?' on':''}" data-k="${k}svc" data-v="En service">En service</button><button class="c${S.v[k+'svc']==='Coupé(e)'?' on':''}" data-k="${k}svc" data-v="Coupé(e)">Coupé(e)</button></div>`;
   return `<div class="it"><div class="hd"><input class="it-title" style="font-weight:600;border:0;background:none;padding:2px;flex:1;min-width:0" data-cpname="${c.id}" value="${esc(c.t)}"><button class="mini" data-act="dupcp" data-r="${c.id}" title="Dupliquer juste en dessous">+</button>${c.orig?'':`<button class="btn d sm" data-act="delcp" data-r="${c.id}">Retirer</button>`}</div><div class="g">${f('n','N° compteur')}${f('e','Emplacement')}${f('a',l[0])}${l[1]?f('b',l[1]):''}</div>${svc}<label class="f">Observations<textarea class="ob" rows="1" data-k="${k}obs" placeholder="Observations">${esc(S.v[k+'obs']||'')}</textarea></label></div>`}).join('')+`<div class="act"><select id="nc" style="width:auto">${Object.keys(MT).map(t=>`<option>${t}</option>`).join('')}</select><button class="btn sm" data-act="addcp">Ajouter un compteur</button></div>`;
@@ -1220,28 +1217,54 @@ function tabDone(id){
   if(['gen','cpt','equi','inv','ann','cles','net','sig'].includes(id))return !!S.v[id+'.done'];
   return false;
 }
+function hasVal(v){
+  if(v==null||v===''||v===false)return false;
+  if(Array.isArray(v))return v.length>0;
+  return true;
+}
+function isMetaKey(k){
+  return k.startsWith('_show_')||k==='_cliEdit'||/\.done$/.test(k)||k.endsWith('nm');
+}
 function tabStarted(id){
-  if(tabDone(id))return false;
-  if(id==='gen')return !!(S.v.sensE||S.v.sensS||GENKEYS.some(k=>S.v[k]));
-  if(id==='cpt')return S.cp.some(c=>{const k='cp'+c.id;return S.v[k+'n']||S.v[k+'e']||S.v[k+'a']||S.v[k+'b']||S.v[k+'svc']||S.v[k+'obs']})||!!(S.ph.cpt&&S.ph.cpt.length);
-  if(id==='equi')return CPTKEYS.some(k=>{const val=S.v[k];return Array.isArray(val)?val.length>0:!!val})||!!(S.ph.equi&&S.ph.equi.length);
-  if(id==='inv')return S.iv.some(r=>{const k='iv'+r.id;return S.v[k+'p']||S.v[k+'d']||S.v[k+'s']||S.v[k+'a']||S.v[k+'b']})||!!(S.ph.inv&&S.ph.inv.length);
-  if(id==='ann')return S.an.some(o=>{const k='an'+o.id+'.';return S.v[k+'p']||S.v[k+'s']||S.v[k+'m']||S.v[k+'b']||S.v[k+'num']})||!!(S.ph.ann&&S.ph.ann.length);
-  if(id==='cles')return total()>0||!!(S.ph.cles&&S.ph.cles.length);
-  if(id==='net')return !!(S.v.net||S.v.netgb);
-  if(id==='sig')return SIG.some(([k])=>S.v[k])||!!S.v.dent||!!S.v.com;
-  if(id==='chif')return !!(S.chif&&S.chif.rooms&&S.chif.rooms.some(r=>r.lines&&r.lines.length));
-  if(id==='cat')return GRILLE.length!==GRILLE_BASE.length;
-  if(S.rooms.some(x=>x.id===id)){
-    return Object.keys(S.v).some(k=>k.indexOf(id+'.')===0&&k!==id+'.done'&&S.v[k])||!!(S.ph[id]&&S.ph[id].length)||!!(S.x[id]&&S.x[id].length)||!!(S.san[id]&&S.san[id].length);
+  if(tabDone(id)||id==='cli'||id==='cat'||id==='cmp')return false;
+  if(id==='gen'){
+    if(S.v.sensE||S.v.sensS)return true;
+    if(GENKEYS.some(k=>hasVal(S.v[k])))return true;
+    if(hasVal(S.v.clientrep)||hasVal(S.v.entrep)||hasVal(S.v.sorrep))return true;
+    if((S.locE||[]).some(o=>{const p='locE'+o.id+'.';return hasVal(S.v[p+'n'])||hasVal(S.v[p+'em'])||hasVal(S.v[p+'te']);}))return true;
+    if((S.locS||[]).some(o=>{const p='locS'+o.id+'.';return hasVal(S.v[p+'n'])||hasVal(S.v[p+'em'])||hasVal(S.v[p+'te']);}))return true;
+    return false;
   }
-  return Object.keys(S.v).some(k=>k.indexOf(id+'.')===0&&S.v[k])||!!(S.ph[id]&&S.ph[id].length);
+  if(id==='cpt')return S.cp.some(c=>{const k='cp'+c.id;return ['n','e','a','b','svc','obs'].some(s=>hasVal(S.v[k+s]));})||!!(S.ph.cpt&&S.ph.cpt.length);
+  if(id==='equi')return CPTKEYS.some(k=>hasVal(S.v[k]))||hasVal(S.v.chfEnergieAutre)||hasVal(S.v.ecsModeAutre)||hasVal(S.v.ecsEnergie)||!!(S.ph.equi&&S.ph.equi.length);
+  if(id==='inv')return S.iv.some(r=>{const k='iv'+r.id;return ['p','d','s','a','b','n'].some(s=>hasVal(S.v[k+s]));})||!!(S.ph.inv&&S.ph.inv.length);
+  if(id==='ann')return S.an.some(o=>{const k='an'+o.id+'.';return ['p','s','m','b','num'].some(s=>hasVal(S.v[k+s]));})||!!(S.ph.ann&&S.ph.ann.length);
+  if(id==='cles')return total()>0||S.kl.some(o=>hasVal(S.v['kl'+o.id+'.b'])||hasVal(S.v['kl'+o.id+'.s']))||!!(S.ph.cles&&S.ph.cles.length);
+  if(id==='net')return hasVal(S.v.net)||hasVal(S.v.netgb);
+  if(id==='sig'){
+    if(hasVal(S.v.dent)||hasVal(S.v.com))return true;
+    if(SIG.some(([k])=>hasVal(S.v[k])||hasVal(S.v[k+'lock'])))return true;
+    if(Object.keys(S.v).some(k=>/^(sgSx|sgEx)/.test(k)&&hasVal(S.v[k])))return true;
+    return false;
+  }
+  if(id==='chif')return !!(S.chif&&S.chif.rooms&&S.chif.rooms.some(r=>r.lines&&r.lines.length));
+  if(S.rooms.some(x=>x.id===id)){
+    const pre=id+'.';
+    if(Object.keys(S.v).some(k=>k.indexOf(pre)===0&&!isMetaKey(k)&&k!==id+'.done'&&hasVal(S.v[k])))return true;
+    if(S.ph[id]&&S.ph[id].length)return true;
+    if(S.x[id]&&S.x[id].length)return true;
+    // Sanitaires / WC : valeurs réellement saisies
+    if(Object.keys(S.v).some(k=>(k.indexOf('sn'+id+'.')===0||k.indexOf('wcs'+id+'.')===0||k.indexOf('wcg'+id+'.')===0)&&!isMetaKey(k)&&hasVal(S.v[k])))return true;
+    if(S.san[id]&&S.san[id].length)return true;
+    return false;
+  }
+  return Object.keys(S.v).some(k=>k.indexOf(id+'.')===0&&!isMetaKey(k)&&hasVal(S.v[k]))||!!(S.ph[id]&&S.ph[id].length);
 }
 function tabFilled(id){return tabDone(id)||tabStarted(id)}
 function allTabEntries(){
-  const t=[['gen','Général'],['cli','Clients'],['cpt','Compteurs'],['equi','Équipements'],...S.rooms.map(r=>[r.id,r.n||'Pièce']),['inv','Inventaire'],['ann','Annexes'],['cles','Clés']];
+  const t=[['gen','Général'],['cpt','Compteurs'],['equi','Équipements'],...S.rooms.map(r=>[r.id,r.n||'Pièce']),['inv','Inventaire'],['ann','Annexes'],['cles','Clés']];
   if(isSortant())t.push(['net','Nettoyage']);
-  if(S.baseline){t.push(['cmp','Comparatif']);t.push(['chif','Chiffrage']);}
+  if(S.baseline){t.push(['chif','Chiffrage']);}
   t.push(['sig','Signatures']);
   return t;
 }
