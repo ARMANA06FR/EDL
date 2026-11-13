@@ -2241,9 +2241,19 @@ $('#shr').onclick=()=>confirmIfIncomplete('partager',doShare);
 $('#rcls').onclick=()=>{$('#recap').classList.remove('show');$('#recap').innerHTML='';$('#rcls').style.display='none'};
 $('#expj').onclick=async()=>{
   const name='EDL_'+(S.v.date||new Date().toISOString().slice(0,10))+'.json';
-  const data=JSON.stringify({v:S.v,rooms:S.rooms,cp:S.cp,x:S.x,iv:S.iv,an:S.an,kl:S.kl,ph:S.ph,san:S.san,locE:S.locE,locS:S.locS,baseline:S.baseline,chif:S.chif});
-  try{const d=window.claude&&await claude.use('downloads');if(d){await d.save({filename:name,data});return}}catch(e){}
-  const a=document.createElement('a');a.href='data:application/json,'+encodeURIComponent(data);a.download=name;a.click();
+  const payload={v:S.v,rooms:S.rooms,cp:S.cp,x:S.x,iv:S.iv,an:S.an,kl:S.kl,ph:S.ph||{},san:S.san,locE:S.locE,locS:S.locS,baseline:S.baseline,chif:S.chif};
+  const data=JSON.stringify(payload);
+  const nPh=Object.values(payload.ph||{}).reduce((n,a)=>n+(Array.isArray(a)?a.length:0),0);
+  try{const d=window.claude&&await claude.use('downloads');if(d){await d.save({filename:name,data});msg('JSON exporté'+(nPh?' ('+nPh+' photo(s))':''));return}}catch(e){}
+  // Blob obligatoire : data: URL tronque les gros JSON (photos base64)
+  try{
+    const blob=new Blob([data],{type:'application/json'});
+    const a=document.createElement('a');
+    const url=URL.createObjectURL(blob);
+    a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    msg('JSON exporté'+(nPh?' ('+nPh+' photo(s))':'') );
+  }catch(e){console.error(e);msg('Export JSON impossible (fichier trop volumineux ?)')}
 };
 let pendingImport=null;
 function showModal(html){$('#modalBody').innerHTML=html;$('#modal').classList.add('show')}
@@ -2264,7 +2274,10 @@ function applyImport(j,mode,keepStates){
   const locS=Array.isArray(j.locS)?j.locS:[];
   try{
     const newBaseline=mode==='sortie'?clone({v,rooms,x,san,iv,kl,locE,locS}):(isObj(j.baseline)?clone(j.baseline):null);
-    S.v=v;S.rooms=rooms;S.cp=cp;S.x=x;S.iv=iv;S.san=san;S.an=an;S.kl=kl;S.ph=ph;S.locE=locE;S.locS=locS;
+    S.v=v;S.rooms=rooms;S.cp=cp;S.x=x;S.iv=iv;S.san=san;S.an=an;S.kl=kl;
+    // Photos : copie défensive (évite référence partagée / perte à l’import)
+    S.ph=isObj(ph)?JSON.parse(JSON.stringify(ph)):{};
+    S.locE=locE;S.locS=locS;
     S.baseline=newBaseline;S.chif=isObj(j.chif)?j.chif:null;
     if(mode==='sortie'){
       S.v.sensS=true;delete S.v.sensE;
@@ -2317,8 +2330,15 @@ function applyImport(j,mode,keepStates){
       // Compteurs : garder n°/emplacement, vider index et état
       (S.cp||[]).forEach(c=>{const k='cp'+c.id;delete S.v[k+'a'];delete S.v[k+'b'];delete S.v[k+'svc'];delete S.v[k+'obs']});
     }
-    S.tab='gen';render();save();savePh();
-    msg(mode==='sortie'?'Repris pour la sortie — relis chaque pièce':mode==='entree'?(keepStates?'Préparé pour l’entrée — états des pièces conservés':'Préparé pour l’entrée — états des pièces effacés'):'EDL rouvert');
+    S.tab='gen';
+    try{save()}catch(e){console.warn(e)}
+    try{savePh()}catch(e){console.warn(e);msg('Photos présentes mais mémoire locale saturée — garde le fichier JSON')}
+    render();
+    const nPh=Object.values(S.ph||{}).reduce((n,a)=>n+(Array.isArray(a)?a.length:0),0);
+    const baseMsg=mode==='sortie'?'Repris pour la sortie — photos effacées (volontaire), relis chaque pièce'
+      :mode==='entree'?(keepStates?'Préparé pour l’entrée — états conservés, photos effacées':'Préparé pour l’entrée — états et photos effacés')
+      :('EDL rouvert'+(nPh?' — '+nPh+' photo(s) restaurée(s)':' — aucune photo dans ce fichier'));
+    msg(baseMsg);
   }catch(e){
     console.error(e);
     msg('Import impossible — fichier illisible ou incompatible');
