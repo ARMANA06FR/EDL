@@ -154,8 +154,9 @@ canvas.sg.locked{border-color:var(--be);background:#f0faf3}
         <div class="menu-dropdown" id="menuDrop">
           <label title="Reprendre un EDL (JSON)">Importer<input type="file" accept="application/json" hidden id="imp"></label>
           <button id="expj">JSON</button>
+          <button id="exp">Exporter PDF</button>
+          <button id="exphtml">Exporter HTML</button>
           <button id="shr">Partager</button>
-          <button id="exp">Exporter</button>
         </div>
       </div>
     </div>
@@ -167,6 +168,7 @@ canvas.sg.locked{border-color:var(--be);background:#f0faf3}
 <div id="recap"></div>
 <div id="modal"><div class="card" id="modalBody"></div></div>
 <div id="qb"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -911,6 +913,174 @@ function loadClients(){
 }
 function saveClients(){try{localStorage.setItem('edl1clients',JSON.stringify(CLIENTS));}catch(e){msg('Répertoire clients : sauvegarde impossible')}}
 loadClients();
+
+/* ===== Bibliothèque EDL + dossier cloud ===== */
+let EDL_LIB=[];
+function loadLib(){
+  try{const raw=localStorage.getItem('edl1lib');if(raw){const j=JSON.parse(raw);if(Array.isArray(j))EDL_LIB=j;}}catch(e){}
+  if(!Array.isArray(EDL_LIB))EDL_LIB=[];
+}
+function saveLib(){
+  try{localStorage.setItem('edl1lib',JSON.stringify(EDL_LIB))}
+  catch(e){msg('Bibliothèque pleine — supprime d’anciens EDL ou exporte-les');throw e}
+}
+loadLib();
+function snapshotEDL(){
+  return {v:S.v,rooms:S.rooms,cp:S.cp,x:S.x,iv:S.iv,an:S.an,kl:S.kl,ph:S.ph,san:S.san,locE:S.locE,locS:S.locS,baseline:S.baseline,chif:S.chif};
+}
+function applySnapshot(j){
+  if(!j||typeof j!=='object')return false;
+  S.v=isObj(j.v)?j.v:{};
+  S.rooms=Array.isArray(j.rooms)&&j.rooms.length?j.rooms:fresh().rooms;
+  S.cp=Array.isArray(j.cp)&&j.cp.length?j.cp:fresh().cp;
+  S.x=isObj(j.x)?j.x:{};
+  S.iv=Array.isArray(j.iv)?j.iv:[];
+  S.an=Array.isArray(j.an)&&j.an.length?j.an:fresh().an;
+  S.kl=Array.isArray(j.kl)&&j.kl.length?j.kl:fresh().kl;
+  S.ph=isObj(j.ph)?j.ph:{};
+  S.san=isObj(j.san)?j.san:{};
+  S.locE=Array.isArray(j.locE)?j.locE:[];
+  S.locS=Array.isArray(j.locS)?j.locS:[];
+  S.baseline=j.baseline||null;
+  S.chif=j.chif||null;
+  S.tab='gen';
+  save();savePh();
+  return true;
+}
+function edlLibLabel(entry){
+  const v=entry.data&&entry.data.v||{};
+  const bits=[entry.name,v.adr,v.client,v.date].filter(Boolean);
+  return bits[0]||'EDL sans nom';
+}
+function saveToLib(name){
+  name=(name||'').trim()||('EDL '+(S.v.date||new Date().toLocaleDateString('fr-FR')));
+  const id=uid();
+  const entry={id,name,savedAt:new Date().toISOString(),data:snapshotEDL()};
+  EDL_LIB.unshift(entry);
+  try{saveLib();msg('EDL enregistré dans Mes EDL');return entry}
+  catch(e){EDL_LIB.shift();return null}
+}
+function updateLibEntry(id){
+  const i=EDL_LIB.findIndex(x=>x.id===id);
+  if(i<0)return false;
+  EDL_LIB[i].data=snapshotEDL();
+  EDL_LIB[i].savedAt=new Date().toISOString();
+  if(S.v._libName)EDL_LIB[i].name=S.v._libName;
+  try{saveLib();return true}catch(e){return false}
+}
+// File System Access — dossier cloud (Drive/Dropbox/iCloud via app bureau)
+let cloudDirHandle=null;
+function idbOpen(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open('edl1fs',1);
+    r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('handles'))r.result.createObjectStore('handles')};
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function idbPutHandle(handle){
+  try{
+    const db=await idbOpen();
+    await new Promise((res,rej)=>{const tx=db.transaction('handles','readwrite');tx.objectStore('handles').put(handle,'cloudDir');tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)});
+  }catch(e){console.warn(e)}
+}
+async function idbGetHandle(){
+  try{
+    const db=await idbOpen();
+    return await new Promise((res,rej)=>{const tx=db.transaction('handles','readonly');const q=tx.objectStore('handles').get('cloudDir');q.onsuccess=()=>res(q.result||null);q.onerror=()=>rej(q.error)});
+  }catch(e){return null}
+}
+async function ensureCloudDir(pickIfMissing){
+  if(cloudDirHandle){
+    try{
+      const p=await cloudDirHandle.queryPermission({mode:'readwrite'});
+      if(p==='granted')return cloudDirHandle;
+      const r=await cloudDirHandle.requestPermission({mode:'readwrite'});
+      if(r==='granted')return cloudDirHandle;
+    }catch(e){cloudDirHandle=null}
+  }
+  const stored=await idbGetHandle();
+  if(stored){
+    try{
+      const p=await stored.queryPermission({mode:'readwrite'});
+      if(p==='granted'||(await stored.requestPermission({mode:'readwrite'}))==='granted'){
+        cloudDirHandle=stored;return cloudDirHandle;
+      }
+    }catch(e){}
+  }
+  if(!pickIfMissing)return null;
+  if(!window.showDirectoryPicker){msg('Dossier cloud non supporté ici — utilise JSON ou un navigateur Chrome / Edge');return null}
+  try{
+    cloudDirHandle=await window.showDirectoryPicker({mode:'readwrite',id:'edl-cloud'});
+    await idbPutHandle(cloudDirHandle);
+    msg('Dossier cloud lié');
+    return cloudDirHandle;
+  }catch(e){if(e&&e.name!=='AbortError')msg('Impossible de lier le dossier');return null}
+}
+async function syncToCloudFolder(){
+  const dir=await ensureCloudDir(true);
+  if(!dir)return;
+  const base=(S.v.rdv||S.v.date||'EDL').toString().replace(/[^\w\-]+/g,'_').slice(0,40);
+  const fname=base+'_'+new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')+'.json';
+  try{
+    const fh=await dir.getFileHandle(fname,{create:true});
+    const w=await fh.createWritable();
+    await w.write(JSON.stringify(snapshotEDL()));
+    await w.close();
+    msg('Synchronisé : '+fname);
+  }catch(e){console.error(e);msg('Échec écriture dossier cloud — vérifie les droits')}
+}
+async function listCloudFiles(){
+  const dir=await ensureCloudDir(true);
+  if(!dir)return [];
+  const out=[];
+  try{
+    for await (const [name,handle] of dir.entries()){
+      if(handle.kind==='file'&&/\.json$/i.test(name))out.push({name,handle});
+    }
+  }catch(e){console.error(e)}
+  out.sort((a,b)=>b.name.localeCompare(a.name));
+  return out;
+}
+async function importFromCloudFile(handle){
+  try{
+    const file=await handle.getFile();
+    const j=JSON.parse(await file.text());
+    if(!applySnapshot(j)){msg('Fichier invalide');return}
+    msg('EDL chargé depuis le dossier cloud');
+    render();
+  }catch(e){msg('Lecture impossible')}
+}
+function renderLib(){
+  const fmt=iso=>{try{return new Date(iso).toLocaleString('fr-FR')}catch(e){return iso||''}};
+  let h='<h2>Mes EDL</h2>';
+  h+='<p class="lg">Enregistre plusieurs constats sur cet appareil, puis synchronise-les vers un dossier cloud (Google Drive, Dropbox, iCloud Drive…) pour les retrouver sur un autre appareil.</p>';
+  h+='<div class="it"><div class="hd"><b>Sauvegarde rapide</b></div>';
+  h+='<div class="g"><label class="f">Nom de la sauvegarde<input id="libName" value="'+esc(S.v._libName||((S.v.adr||'')+(S.v.date?' — '+S.v.date:''))||'')+'" placeholder="Ex. 12 rue X — sortie 13/11"></label></div>';
+  h+='<div class="act"><button class="btn p sm" data-act="libSave">Enregistrer l’EDL en cours</button>';
+  h+='<button class="btn sm" data-act="libCloudSync">Sync → dossier cloud</button>';
+  h+='<button class="btn sm" data-act="libCloudLink">Lier / changer le dossier cloud</button></div>';
+  h+='<p class="lg" style="margin-top:8px">Astuce : choisis un dossier déjà synchronisé par Drive, Dropbox ou iCloud. Sur un autre appareil, ouvre le même dossier (ou importe le fichier JSON).</p></div>';
+  h+='<div class="it"><div class="hd"><b>Bibliothèque sur cet appareil ('+EDL_LIB.length+')</b></div>';
+  if(!EDL_LIB.length)h+='<p class="lg">Aucun EDL enregistré pour le moment.</p>';
+  else{
+    EDL_LIB.forEach(e=>{
+      const v=e.data&&e.data.v||{};
+      const sub=[v.client,v.adr,v.ville].filter(Boolean).join(' · ');
+      h+='<div class="it" style="margin:8px 0"><div class="hd"><b>'+esc(e.name||'Sans nom')+'</b><span class="hd-actions">';
+      h+='<button class="btn p sm" data-act="libLoad" data-id="'+esc(e.id)+'">Ouvrir</button>';
+      h+='<button class="btn sm" data-act="libUpdate" data-id="'+esc(e.id)+'">Mettre à jour</button>';
+      h+='<button class="mini d" data-act="libDel" data-id="'+esc(e.id)+'" title="Supprimer">×</button>';
+      h+='</span></div>';
+      h+='<div class="lg">'+esc(fmt(e.savedAt))+(sub?' · '+esc(sub):'')+'</div></div>';
+    });
+  }
+  h+='</div>';
+  h+='<div class="it"><div class="hd"><b>Importer depuis le dossier cloud</b></div>';
+  h+='<div class="act"><button class="btn sm" data-act="libCloudList">Lister les fichiers JSON du dossier</button></div>';
+  h+='<div id="cloudList"></div></div>';
+  return h;
+}
 function applyClientToEDL(c){
   if(!c)return;
   if(c.statut!=null)S.v.statut=c.statut;
@@ -1379,7 +1549,7 @@ function compareList(){
   return out;
 }
 function tabs(){
-  const t=[['gen','Général'],['cli','Clients'],['cpt','Compteurs'],['equi','Équipements'],...S.rooms.map(r=>[r.id,r.n||'Pièce']),['inv','Inventaire'],['ann','Annexes'],['cles','Clés']];
+  const t=[['gen','Général'],['cli','Clients'],['lib','Mes EDL'],['cpt','Compteurs'],['equi','Équipements'],...S.rooms.map(r=>[r.id,r.n||'Pièce']),['inv','Inventaire'],['ann','Annexes'],['cles','Clés']];
   if(isSortant())t.push(['net','Nettoyage']);
   if(S.baseline){t.push(['cmp','Comparatif']);t.push(['chif','Chiffrage']);}
   t.push(['sig','Signatures']);
@@ -1483,6 +1653,7 @@ function renderCore(){
     h+=`<div class="act"><button class="btn ${S.v['gen.done']?'p':''} sm" data-act="donebtn" data-r="gen">${S.v['gen.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
   }
   else if(T==='cli')h=renderClients();
+  else if(T==='lib')h=renderLib();
   else if(T==='cpt')h=`<h2>Compteurs</h2>${meters()}${photoBlock('cpt')}<div class="act"><button class="btn ${S.v['cpt.done']?'p':''} sm" data-act="donebtn" data-r="cpt">${S.v['cpt.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
   else if(T==='equi')h=renderEqui();
   else if(T==='ann')h=`<h2>Annexes</h2>${dynList(S.an,'an',(k,o)=>`<div class="g">${['Cave','Garage','Grenier'].includes(o.n)?`<label class="f">N°<input data-k="${k}num" value="${esc(S.v[k+'num']||'')}"></label>`:''}<label class="f">Porte${sel(k+'p',SS)}</label><label class="f">Serrure${sel(k+'s',SS)}</label><label class="f">m³ à vider<input data-k="${k}m" value="${esc(S.v[k+'m']||'')}"></label></div>${ob(k)}`)}${photoBlock('ann')}<div class="act"><button class="btn ${S.v['ann.done']?'p':''} sm" data-act="donebtn" data-r="ann">${S.v['ann.done']?'✓ Section terminée':'Marquer comme terminée'}</button></div>`;
@@ -1742,6 +1913,53 @@ document.addEventListener('click',e=>{
   if(d.act==='cliDel'){CLIENTS=CLIENTS.filter(x=>x.id!==d.id);saveClients();render();return}
   if(d.act==='cliPickUse'){const id=$('#cliPick')&&$('#cliPick').value;const c=CLIENTS.find(x=>x.id===id);if(!c){msg('Choisis un client');return}applyClientToEDL(c);S.tab='gen';render();return}
   if(d.act==='cliPickUseGen'){const id=$('#cliPickGen')&&$('#cliPickGen').value;const c=CLIENTS.find(x=>x.id===id);if(!c){msg('Choisis un client');return}applyClientToEDL(c);render();return}
+  if(d.act==='libSave'){
+    const name=($('#libName')&&$('#libName').value||'').trim();
+    if(name)S.v._libName=name;
+    saveToLib(name);render();return;
+  }
+  if(d.act==='libLoad'){
+    const e=EDL_LIB.find(x=>x.id===d.id);
+    if(!e||!e.data){msg('Sauvegarde introuvable');return}
+    if(!applySnapshot(e.data)){msg('Sauvegarde illisible');return}
+    S.v._libName=e.name||'';
+    S.v._libId=e.id;
+    msg('EDL ouvert : '+(e.name||''));
+    render();return;
+  }
+  if(d.act==='libUpdate'){
+    const name=($('#libName')&&$('#libName').value||'').trim();
+    if(name)S.v._libName=name;
+    if(updateLibEntry(d.id))msg('Sauvegarde mise à jour');
+    else msg('Mise à jour impossible');
+    render();return;
+  }
+  if(d.act==='libDel'){
+    EDL_LIB=EDL_LIB.filter(x=>x.id!==d.id);
+    try{saveLib()}catch(e){}
+    render();return;
+  }
+  if(d.act==='libCloudLink'){ensureCloudDir(true).then(()=>render());return}
+  if(d.act==='libCloudSync'){syncToCloudFolder();return}
+  if(d.act==='libCloudList'){
+    listCloudFiles().then(files=>{
+      const box=$('#cloudList');
+      if(!box)return;
+      if(!files.length){box.innerHTML='<p class="lg">Aucun fichier .json dans ce dossier.</p>';return}
+      box.innerHTML='<div class="act" style="flex-direction:column;align-items:stretch">'+files.slice(0,40).map((f,i)=>
+        `<button class="btn sm" data-act="libCloudOpen" data-i="${i}">${esc(f.name)}</button>`
+      ).join('')+'</div>';
+      box._cloudFiles=files;
+    });
+    return;
+  }
+  if(d.act==='libCloudOpen'){
+    const box=$('#cloudList');
+    const files=box&&box._cloudFiles;
+    const f=files&&files[+d.i];
+    if(!f){msg('Fichier introuvable');return}
+    importFromCloudFile(f.handle);return;
+  }
   if(d.act==='gotoCli'){S.tab='cli';render();return}
 });
 function onIn(e){
@@ -1952,15 +2170,56 @@ function buildDoc(){
   const h=recap();
   return '<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>État des lieux — EDL 06 IMMO</title><style>body{font:14px/1.4 system-ui,sans-serif;margin:20px;color:#17252d;max-width:900px}table{border-collapse:separate;border-spacing:0 6px;width:100%;margin:6px 0 16px;font-size:13px}td,th{border:1px solid #e2e6e8;padding:7px 9px;text-align:left;vertical-align:top}tr td:first-child,tr th:first-child{border-radius:8px 0 0 8px}tr td:last-child,tr th:last-child{border-radius:0 8px 8px 0}th{background:#eef3f5;font-weight:600}h2{margin:20px 0 4px;font-size:17px}img{max-width:280px;max-height:280px;width:auto;height:auto;object-fit:contain;margin:3px;border-radius:6px}.hdband{background:#0e6d8c;color:#fff;border-radius:12px;padding:18px 22px;margin-bottom:14px;text-align:center}.hdband .brand{font-weight:800;font-size:22px;letter-spacing:.06em;display:block}.hdband .sub{font-size:13px;opacity:.9;display:block}.hdband .subname{font-size:15px;font-weight:600;display:block;margin-top:8px}.hdband .subsiren{font-size:13px;opacity:.9;display:block;margin-top:2px}.sum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}.sc{font-size:12px;padding:5px 10px;border-radius:20px;color:#333;font-weight:500}@media print{body{margin:8mm}}</style><body>'+h;
 }
-const docName=()=>(S.v.rdv?S.v.rdv+' ':'')+'EDL.html';
-const doExport=async()=>{
-  const doc=buildDoc(),name=docName();
+const docName=(ext='html')=>(S.v.rdv?S.v.rdv+' ':'')+'EDL.'+ext;
+const doExportHtml=async()=>{
+  const doc=buildDoc(),name=docName('html');
   try{const d=window.claude&&await claude.use('downloads');
     if(d){await d.save({filename:name,data:doc});return}}catch(e){if(e&&e.code==='declined')return}
   const blob=new Blob([doc],{type:'text/html'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();
 };
-$('#exp').onclick=()=>confirmIfIncomplete('exporter',doExport);
+/** Export PDF via impression navigateur (fiable) — html2pdf/html2canvas donnait des pages blanches. */
+function openPrintPdf(){
+  const html=buildDoc();
+  // Nouvel onglet : le plus fiable pour « Enregistrer au format PDF »
+  const w=window.open('','_blank');
+  if(w){
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    const tryPrint=()=>{try{w.focus();w.print()}catch(e){}};
+    // Attendre images
+    const imgs=[...w.document.images];
+    if(!imgs.length){setTimeout(tryPrint,200)}
+    else{
+      let left=imgs.length;
+      const done=()=>{left--;if(left<=0)setTimeout(tryPrint,150)};
+      imgs.forEach(img=>{if(img.complete)done();else{img.onload=done;img.onerror=done}});
+      setTimeout(tryPrint,4000);
+    }
+    msg('Dans la boîte d’impression : destination « Enregistrer au format PDF »');
+    return;
+  }
+  // Secours iframe si pop-up bloquée
+  let frame=document.getElementById('pdf-print-frame');
+  if(frame)frame.remove();
+  frame=document.createElement('iframe');
+  frame.id='pdf-print-frame';
+  frame.setAttribute('style','position:fixed;inset:0;width:100%;height:100%;border:0;z-index:99999;background:#fff');
+  document.body.appendChild(frame);
+  const doc=frame.contentDocument||frame.contentWindow.document;
+  doc.open();doc.write(html);doc.close();
+  const run=()=>{try{frame.contentWindow.focus();frame.contentWindow.print()}catch(e){msg('Impression bloquée')}};
+  setTimeout(run,400);
+  msg('Choisis « Enregistrer au format PDF », puis ferme l’aperçu');
+  // Retirer l’iframe après impression
+  const cleanup=()=>{try{frame.remove()}catch(e){}};
+  frame.contentWindow.onafterprint=cleanup;
+  setTimeout(cleanup,120000);
+}
+const doExportPdf=async()=>{openPrintPdf()};
+$('#exp').onclick=()=>confirmIfIncomplete('exporter en PDF',doExportPdf);
+$('#exphtml').onclick=()=>confirmIfIncomplete('exporter en HTML',doExportHtml);
 $('#neu').onclick=()=>{
   if($('#neu').dataset.ok!=='1'){$('#neu').dataset.ok='1';$('#neu').textContent='Confirmer (efface tout)';
     setTimeout(()=>{$('#neu').dataset.ok='';$('#neu').textContent='Nouveau'},4000);return}
@@ -1969,13 +2228,13 @@ $('#neu').onclick=()=>{
 };
 $('#ape').onclick=()=>{$('#recap').innerHTML=recap();$('#recap').classList.add('show');$('#rcls').style.display='block';scrollTo(0,0)};
 const doShare=async()=>{
-  const doc=buildDoc(),name=docName();
-  const file=new File([doc],name,{type:'text/html'});
+  const name=docName('html');
+  const file=new File([buildDoc()],name,{type:'text/html'});
   if(navigator.canShare&&navigator.canShare({files:[file]})){
     try{await navigator.share({files:[file],title:'État des lieux — EDL 06 IMMO',text:'Constat d’état des lieux'});return}
     catch(e){if(e&&e.name==='AbortError')return;msg('Partage annulé')}
   }else{
-    msg('Partage natif non disponible — utilise Exporter puis joins le fichier toi-même');
+    msg('Partage natif non disponible — utilise Exporter HTML ou PDF');
   }
 };
 $('#shr').onclick=()=>confirmIfIncomplete('partager',doShare);
