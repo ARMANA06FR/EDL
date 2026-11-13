@@ -137,7 +137,34 @@ canvas.sg.locked{border-color:var(--be);background:#f0faf3}
 #recap.show .sum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
 #recap.show .sc{font-size:12px;padding:5px 10px;border-radius:20px;color:#333;font-weight:500}
 #rcls{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:10px;z-index:31}
-@media print{header,main,#rcls{display:none}#recap{display:block;color:#000;background:#fff}}
+@media print{
+  @page{size:A4;margin:12mm 10mm}
+  html,body{background:#fff!important;color:#000!important}
+  header,main,#rcls,#qb,#modal,#st,.menu-wrap,#tabs{display:none!important}
+  #recap,#recap.show{
+    display:block!important;position:static!important;inset:auto!important;
+    background:#fff!important;color:#111!important;overflow:visible!important;
+    padding:0!important;z-index:auto!important;width:100%!important;max-width:none!important
+  }
+  #recap table{border-collapse:collapse;border-spacing:0;width:100%;margin:4px 0 10px;font-size:11px;page-break-inside:auto}
+  #recap td,#recap th{border:1px solid #333;padding:4px 6px;text-align:left;vertical-align:top;color:#111}
+  #recap th{background:#eee!important;font-weight:600;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #recap tr{page-break-inside:avoid;break-inside:avoid}
+  #recap h2{margin:12px 0 4px;font-size:13px;page-break-after:avoid;break-after:avoid;color:#000}
+  #recap img{max-width:180px;max-height:180px;width:auto;height:auto;object-fit:contain;margin:2px;page-break-inside:avoid;break-inside:avoid}
+  #recap .hdband{
+    background:#0e6d8c!important;color:#fff!important;border-radius:8px;padding:12px 14px;margin-bottom:10px;text-align:center;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;page-break-inside:avoid;break-inside:avoid
+  }
+  #recap .hdband .brand,#recap .hdband .sub,#recap .hdband .subname,#recap .hdband .subsiren{color:#fff!important}
+  #recap .hdband .brand{font-weight:800;font-size:16px;letter-spacing:.04em;display:block}
+  #recap .hdband .sub{font-size:11px;display:block}
+  #recap .hdband .subname{font-size:12px;font-weight:600;display:block;margin-top:6px}
+  #recap .hdband .subsiren{font-size:11px;display:block;margin-top:2px}
+  #recap .sum{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+  #recap .sc{font-size:10px;padding:3px 7px;border-radius:12px;color:#111;font-weight:500;border:1px solid #999;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #recap p{orphans:3;widows:3}
+}
 </style>
 </head>
 <body>
@@ -2168,7 +2195,39 @@ function recap(){
 }
 function buildDoc(){
   const h=recap();
-  return '<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>État des lieux — EDL 06 IMMO</title><style>*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}body{font:14px/1.4 system-ui,sans-serif;margin:20px;color:#17252d;max-width:900px}table{border-collapse:separate;border-spacing:0 6px;width:100%;margin:6px 0 16px;font-size:13px}td,th{border:1px solid #e2e6e8;padding:7px 9px;text-align:left;vertical-align:top}tr td:first-child,tr th:first-child{border-radius:8px 0 0 8px}tr td:last-child,tr th:last-child{border-radius:0 8px 8px 0}th{background:#eef3f5;font-weight:600}h2{margin:20px 0 4px;font-size:17px}img{max-width:280px;max-height:280px;width:auto;height:auto;object-fit:contain;margin:3px;border-radius:6px}.hdband{background:#0e6d8c;color:#fff;border-radius:12px;padding:18px 22px;margin-bottom:14px;text-align:center}.hdband .brand{font-weight:800;font-size:22px;letter-spacing:.06em;display:block}.hdband .sub{font-size:13px;opacity:.9;display:block}.hdband .subname{font-size:15px;font-weight:600;display:block;margin-top:8px}.hdband .subsiren{font-size:13px;opacity:.9;display:block;margin-top:2px}.sum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}.sc{font-size:12px;padding:5px 10px;border-radius:20px;color:#333;font-weight:500}@media print{body{margin:8mm}}</style><body>'+h;
+  const css=`*{box-sizing:border-box}
+body{font:13px/1.35 system-ui,Segoe UI,Roboto,sans-serif;margin:16px;color:#111;background:#fff;max-width:900px}
+table{border-collapse:collapse;border-spacing:0;width:100%;margin:4px 0 12px;font-size:11.5px}
+td,th{border:1px solid #333;padding:5px 7px;text-align:left;vertical-align:top}
+th{background:#eee;font-weight:600}
+h2{margin:14px 0 4px;font-size:14px;color:#000;page-break-after:avoid;break-after:avoid}
+img{max-width:200px;max-height:200px;width:auto;height:auto;object-fit:contain;margin:2px;page-break-inside:avoid;break-inside:avoid}
+.hdband{background:#0e6d8c;color:#fff;border-radius:8px;padding:14px 16px;margin-bottom:12px;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.hdband .brand{font-weight:800;font-size:18px;letter-spacing:.04em;display:block;color:#fff}
+.hdband .sub{font-size:12px;opacity:.95;display:block;color:#fff}
+.hdband .subname{font-size:13px;font-weight:600;display:block;margin-top:6px;color:#fff}
+.hdband .subsiren{font-size:12px;opacity:.95;display:block;margin-top:2px;color:#fff}
+.sum{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.sc{font-size:11px;padding:3px 8px;border-radius:12px;color:#111;font-weight:500;border:1px solid #888;background:#f3f3f3;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+p{orphans:3;widows:3}
+@media print{
+  @page{size:A4;margin:12mm 10mm}
+  html,body{margin:0;background:#fff!important;color:#000!important;max-width:none}
+  body{font-size:11px;line-height:1.3}
+  table{font-size:10px;margin:3px 0 8px}
+  td,th{padding:3px 5px;border-color:#444}
+  th{background:#e8e8e8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  tr{page-break-inside:avoid;break-inside:avoid}
+  h2{font-size:12px;margin:10px 0 3px;page-break-after:avoid}
+  img{max-width:160px;max-height:160px}
+  .hdband{padding:10px 12px;margin-bottom:8px;border-radius:6px;page-break-inside:avoid;break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .hdband .brand{font-size:15px}
+  .hdband .sub,.hdband .subsiren{font-size:10px}
+  .hdband .subname{font-size:11px}
+  .sum{margin-bottom:8px}
+  .sc{font-size:9px;padding:2px 6px}
+}`;
+  return '<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>État des lieux — EDL 06 IMMO</title><style>'+css+'</style><body>'+h;
 }
 const docName=(ext='html')=>(S.v.rdv?S.v.rdv+' ':'')+'EDL.'+ext;
 const doExportHtml=async()=>{
