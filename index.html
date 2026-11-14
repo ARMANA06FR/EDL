@@ -1053,14 +1053,14 @@ async function importFromCloudFile(handle){
 }
 function renderLib(){
   const fmt=iso=>{try{return new Date(iso).toLocaleString('fr-FR')}catch(e){return iso||''}};
+  const hasDirPicker=typeof window.showDirectoryPicker==='function';
   let h='<h2>Mes EDL</h2>';
-  h+='<p class="lg">Enregistre plusieurs constats sur cet appareil, puis synchronise-les vers un dossier cloud (Google Drive, Dropbox, iCloud Drive…) pour les retrouver sur un autre appareil.</p>';
+  h+='<p class="lg">Enregistre plusieurs constats sur cet appareil, puis envoie-les vers le cloud (OneDrive, Google Drive, etc.) pour les rouvrir ailleurs.</p>';
   h+='<div class="it"><div class="hd"><b>Sauvegarde rapide</b></div>';
   h+='<div class="g"><label class="f">Nom de la sauvegarde<input id="libName" value="'+esc(S.v._libName||((S.v.adr||'')+(S.v.date?' — '+S.v.date:''))||'')+'" placeholder="Ex. 12 rue X — sortie 13/11"></label></div>';
   h+='<div class="act"><button class="btn p sm" data-act="libSave">Enregistrer l’EDL en cours</button>';
-  h+='<button class="btn sm" data-act="libCloudSync">Sync → dossier cloud</button>';
-  h+='<button class="btn sm" data-act="libCloudLink">Lier / changer le dossier cloud</button></div>';
-  h+='<p class="lg" style="margin-top:8px">Astuce : choisis un dossier déjà synchronisé par Drive, Dropbox ou iCloud. Sur un autre appareil, ouvre le même dossier (ou importe le fichier JSON).</p></div>';
+  h+='<button class="btn sm" data-act="libShareCloud">Partager / enregistrer vers le cloud</button></div>';
+  h+='<p class="lg" style="margin-top:8px"><b>Sur smartphone :</b> utilise « Partager / enregistrer vers le cloud » puis choisis <b>OneDrive</b>, Drive, Files… C’est la méthode la plus fiable. Le « dossier cloud » dépend de ce qu’Android affiche (souvent Drive + stockage local uniquement).</p></div>';
   h+='<div class="it"><div class="hd"><b>Bibliothèque sur cet appareil ('+EDL_LIB.length+')</b></div>';
   if(!EDL_LIB.length)h+='<p class="lg">Aucun EDL enregistré pour le moment.</p>';
   else{
@@ -1076,10 +1076,41 @@ function renderLib(){
     });
   }
   h+='</div>';
-  h+='<div class="it"><div class="hd"><b>Importer depuis le dossier cloud</b></div>';
-  h+='<div class="act"><button class="btn sm" data-act="libCloudList">Lister les fichiers JSON du dossier</button></div>';
-  h+='<div id="cloudList"></div></div>';
+  h+='<div class="it"><div class="hd"><b>Ouvrir un JSON (OneDrive, Drive…)</b></div>';
+  h+='<p class="lg">Sur mobile, ce bouton ouvre le sélecteur de fichiers du téléphone — tu peux y choisir <b>OneDrive</b> si l’appli est installée.</p>';
+  h+='<div class="act"><label class="btn p sm">Choisir un fichier JSON<input type="file" accept="application/json,.json" hidden id="libFileImp"></label></div></div>';
+  h+='<div class="it"><div class="hd"><b>Dossier cloud (ordinateur / Chrome avancé)</b></div>';
+  if(hasDirPicker){
+    h+='<p class="lg">Sur PC, tu peux lier un dossier synchronisé. Sur Android, la liste des emplacements est imposée par le système (OneDrive n’y apparaît pas toujours).</p>';
+    h+='<div class="act"><button class="btn sm" data-act="libCloudLink">Lier / changer le dossier</button>';
+    h+='<button class="btn sm" data-act="libCloudSync">Écrire l’EDL dans le dossier</button>';
+    h+='<button class="btn sm" data-act="libCloudList">Lister les JSON du dossier</button></div>';
+    h+='<div id="cloudList"></div>';
+  }else{
+    h+='<p class="lg">La liaison de dossier n’est pas disponible sur ce navigateur. Utilise « Partager vers le cloud » ou « Choisir un fichier JSON ».</p>';
+  }
+  h+='</div>';
   return h;
+}
+async function shareJsonToCloud(){
+  const name='EDL_'+(S.v.rdv||S.v.date||new Date().toISOString().slice(0,10))+'.json';
+  const data=JSON.stringify(snapshotEDL());
+  const file=new File([data],name,{type:'application/json'});
+  try{
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:'EDL JSON',text:'Sauvegarde état des lieux'});
+      msg('Choisis OneDrive (ou un autre cloud) dans le menu de partage');
+      return;
+    }
+  }catch(e){if(e&&e.name==='AbortError')return}
+  // Secours : téléchargement du JSON
+  try{
+    const a=document.createElement('a');
+    const url=URL.createObjectURL(new Blob([data],{type:'application/json'}));
+    a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    msg('JSON téléchargé — déplace-le ensuite dans OneDrive');
+  }catch(e2){msg('Partage impossible sur cet appareil')}
 }
 function applyClientToEDL(c){
   if(!c)return;
@@ -1939,6 +1970,7 @@ document.addEventListener('click',e=>{
     try{saveLib()}catch(e){}
     render();return;
   }
+  if(d.act==='libShareCloud'){shareJsonToCloud();return}
   if(d.act==='libCloudLink'){ensureCloudDir(true).then(()=>render());return}
   if(d.act==='libCloudSync'){syncToCloudFolder();return}
   if(d.act==='libCloudList'){
@@ -2025,6 +2057,18 @@ function onIn(e){
 document.addEventListener('input',onIn);
 document.addEventListener('change',async e=>{
   const t=e.target;
+  if(t.id==='libFileImp'){
+    const f=t.files&&t.files[0];if(!f)return;
+    try{
+      const j=JSON.parse(await f.text());
+      if(!applySnapshot(j)){msg('Fichier invalide');t.value='';return}
+      const nPh=Object.values(S.ph||{}).reduce((n,a)=>n+(Array.isArray(a)?a.length:0),0);
+      msg('EDL ouvert depuis '+f.name+(nPh?' — '+nPh+' photo(s)':''));
+      render();
+    }catch(err){console.error(err);msg('Fichier illisible')}
+    t.value='';
+    return;
+  }
   if(t.dataset.sel){
     const wrap=t.closest('.selwrap');
     const other=wrap&&wrap.querySelector('.selother');
